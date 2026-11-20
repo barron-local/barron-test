@@ -1,59 +1,36 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 
-// ====================================================================================
-// การพัฒนาระบบฝั่งหน้าบ้าน (Front-end Development)
-// หัวข้อหลัก: การสร้าง Web Application ด้วย React / Next.js
-// ====================================================================================
-
 export default function Home() {
-  // ฟังก์ชันช่วยเหลือสำหรับเรียก API
   const getApiUrl = (path) => {
     if (typeof window !== 'undefined') return `http://${window.location.hostname}:5000${path}`;
     return `http://localhost:5000${path}`;
   };
 
-  // ----------------------------------------------------------------------------------
-  // 1. State สำหรับระบบเข้าสู่ระบบ (Authentication ด้วย JWT)
-  // ----------------------------------------------------------------------------------
+  // 1. State สำหรับระบบ Authentication, รายการข้อมูลผู้ใช้, ฟอร์มเพิ่ม/แก้ไข และการแจ้งเตือน
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [user, setUser] = useState(null);
 
-  // ----------------------------------------------------------------------------------
-  // 2. State สำหรับค้นหาและกรองข้อมูล (Search & Filter)
-  // ----------------------------------------------------------------------------------
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
   const [state, setState] = useState('');
 
-  // ----------------------------------------------------------------------------------
-  // 3. State สำหรับฟอร์มเพิ่มข้อมูลพร้อมแนบไฟล์ (Create Form)
-  // ----------------------------------------------------------------------------------
   const [newName, setNewName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('readonly');
   const [newFile, setNewFile] = useState(null);
   const newFileInputRef = useRef(null);
 
-  // ----------------------------------------------------------------------------------
-  // 4. State สำหรับฟอร์มแก้ไขข้อมูลและแก้ไขไฟล์แนบเดิม (Edit Form)
-  // ----------------------------------------------------------------------------------
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('readonly');
   const [editFile, setEditFile] = useState(null);
 
-  // ----------------------------------------------------------------------------------
-  // 5. State สำหรับ Error Handling & Alert Notification
-  // ----------------------------------------------------------------------------------
   const [msg, setMsg] = useState({ text: '', isError: false });
 
-  /**
-   * มีการทำ Error Handling ฝั่ง Frontend:
-   * แปลงรหัส Error จาก Backend เป็นข้อความที่ผู้ใช้เข้าใจง่าย
-   */
+  // 2. ฟังก์ชันจัดการข้อความแจ้งเตือน และแปลง Error Code จาก Backend
   const handleBackendError = (statusCode, backendMessage) => {
     if (statusCode === 400) return backendMessage || 'ข้อมูลที่ส่งไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
     if (statusCode === 401) return 'กรุณาเข้าสู่ระบบก่อนทำรายการ หรือ Token หมดอายุ';
@@ -68,9 +45,7 @@ export default function Home() {
     setTimeout(() => setMsg({ text: '', isError: false }), 4500);
   };
 
-  // ----------------------------------------------------------------------------------
-  // 6. ฟังก์ชันดึงข้อมูลผู้ใช้ (รองรับ Search & Filter ตามสิทธิ์)
-  // ----------------------------------------------------------------------------------
+  // 3. ฟังก์ชันดึงรายการข้อมูลผู้ใช้ (รองรับ Search & Filter ตามระดับสิทธิ์)
   const fetchUsers = async (s = search, r = role, st = state) => {
     if (!user?.token) return;
     try {
@@ -99,7 +74,6 @@ export default function Home() {
     }
   };
 
-  // ตรวจสอบ JWT Token จาก localStorage เมื่อโหลดหน้าเว็บครั้งแรก
   useEffect(() => {
     const saved = localStorage.getItem('user');
     if (saved) {
@@ -111,20 +85,16 @@ export default function Home() {
     }
   }, []);
 
-  // เมื่อผู้ใช้ล็อกอินสำเร็จ ให้โหลดข้อมูลผู้ใช้ตามระดับสิทธิ์
   useEffect(() => {
     if (user?.token) {
       fetchUsers();
     }
   }, [user]);
 
-  // ----------------------------------------------------------------------------------
-  // 7. พัฒนาหน้าจอและระบบ Login หรือ Authentication ด้วย JWT ที่ใช้งานได้จริง
-  // ----------------------------------------------------------------------------------
+  // 4. ฟังก์ชันเข้าสู่ระบบ (Login) และออกจากระบบ (Logout) ด้วย JWT
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Form Validation ฝั่ง Frontend
     if (!username.trim() || !password.trim()) {
       notify('กรุณากรอก Username และ Password ให้ครบถ้วน', true);
       return;
@@ -159,7 +129,6 @@ export default function Home() {
         });
       }
     } catch (e) {
-      // ละเว้นข้อผิดพลาดกรณีเครือข่ายหลุด
     } finally {
       localStorage.removeItem('user');
       setUser(null);
@@ -168,13 +137,10 @@ export default function Home() {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // 8. หน้าฟอร์มสำหรับเพิ่มข้อมูลได้สมบูรณ์ พร้อมฟังก์ชันแนบไฟล์ข้อมูล
-  // ----------------------------------------------------------------------------------
+  // 5. ฟังก์ชันเพิ่มผู้ใช้ใหม่พร้อมแนบไฟล์ข้อมูล (เฉพาะ Admin)
   const handleCreate = async (e) => {
     e.preventDefault();
 
-    // มีการ Validate ข้อมูลฝั่ง Frontend ก่อนส่งไปยัง Backend
     if (!newName.trim()) {
       notify('กรุณากรอกชื่อผู้ใช้ (Username)', true);
       return;
@@ -185,7 +151,6 @@ export default function Home() {
     }
 
     try {
-      // 8.1 ส่งข้อมูล Request Body สร้างผู้ใช้ใหม่
       const res = await fetch(getApiUrl('/api/users'), {
         method: 'POST',
         headers: {
@@ -203,7 +168,6 @@ export default function Home() {
       if (res.ok) {
         const createdId = data.id || data.data?.id;
 
-        // 8.2 มีการแนบไฟล์พร้อมกับเพิ่มข้อมูลได้สมบูรณ์ (ถ้ามีการเลือกไฟล์)
         if (newFile && createdId) {
           const formData = new FormData();
           formData.append('file', newFile);
@@ -228,11 +192,8 @@ export default function Home() {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // 9. หน้าจัดการข้อมูล: สามารถแก้ไขข้อมูล และแก้ไขไฟล์แนบเดิมได้
-  // ----------------------------------------------------------------------------------
+  // 6. ฟังก์ชันแก้ไขข้อมูลผู้ใช้และไฟล์แนบเดิม (Admin หรือ Editonly)
   const handleEdit = async (id) => {
-    // Validate ข้อมูลฝั่ง Frontend
     if (!editName.trim()) {
       notify('ชื่อผู้ใช้ไม่สามารถเว้นว่างได้', true);
       return;
@@ -242,7 +203,6 @@ export default function Home() {
       const formData = new FormData();
       formData.append('username', editName.trim());
       if (isAdmin) formData.append('role', editRole);
-      // มีการแก้ไขไฟล์แนบที่เกี่ยวข้องกับข้อมูลได้
       if (editFile) formData.append('file', editFile);
 
       const res = await fetch(getApiUrl(`/api/users/${id}`), {
@@ -265,9 +225,7 @@ export default function Home() {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // 10. มีกล่องข้อความยืนยัน/แจ้งเตือนก่อนการลบข้อมูล (Confirmation Dialog)
-  // ----------------------------------------------------------------------------------
+  // 7. ฟังก์ชันลบข้อมูลผู้ใช้พร้อมกล่องยืนยัน (Confirmation Dialog)
   const handleDelete = async (id, targetUsername) => {
     const isConfirmed = window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลผู้ใช้ "${targetUsername}" ?\nการกระทำนี้ไม่สามารถย้อนกลับได้`);
     if (!isConfirmed) return;
@@ -290,20 +248,14 @@ export default function Home() {
     }
   };
 
-  // ----------------------------------------------------------------------------------
-  // 11. จัดการสิทธิ์การเข้าใช้งาน (Role-based UI) โดยแยกหน้าจอและการเข้าถึงตามสิทธิ์ใน JWT
-  // ----------------------------------------------------------------------------------
   const isAdmin = user?.role === 'admin';
   const canEdit = user?.role === 'admin' || user?.role === 'editonly';
 
-  // ==================================================================================
-  // หน้าจอที่ 1: หน้าจอเข้าสู่ระบบ (Login Screen) เมื่อยังไม่มี Session Token
-  // ==================================================================================
+  // หน้าจอที่ 1: เข้าสู่ระบบ (Login Screen)
   if (!user) {
     return (
       <div className="login-box card">
         <h2 className="login-title">เข้าสู่ระบบ (Login)</h2>
-        {/* UI แสดงการแจ้งเตือน Error / Success */}
         {msg.text && (
           <div className={msg.isError ? "alert-error" : "alert-success"}>
             {msg.text}
@@ -340,13 +292,10 @@ export default function Home() {
     );
   }
 
-  // ==================================================================================
-  // หน้าจอที่ 2: ระบบบริหารจัดการข้อมูล (Dashboard / Role-based UI)
-  // ==================================================================================
+  // หน้าจอที่ 2: ระบบบริหารจัดการผู้ใช้ (Dashboard)
   return (
     <div className="container">
       <div className="card">
-        {/* หัวหน้าเว็บ: แสดงข้อมูลผู้ใช้และสิทธิ์จาก JWT Token */}
         <div className="header">
           <div>
             <h2 className="header-title">ระบบบริหารจัดการผู้ใช้ (User Management)</h2>
@@ -360,16 +309,13 @@ export default function Home() {
           </button>
         </div>
 
-        {/* UI กล่องแจ้งเตือนสถานะการทำงาน (Error / Success) */}
         {msg.text && (
           <div className={msg.isError ? "alert-error" : "alert-success"}>
             {msg.text}
           </div>
         )}
 
-        {/* ------------------------------------------------------------------------ */}
-        {/* ฟอร์มเพิ่มข้อมูลพร้อมแนบไฟล์ (แสดงเฉพาะ Admin ตามระดับสิทธิ์)             */}
-        {/* ------------------------------------------------------------------------ */}
+        {/* ฟอร์มเพิ่มผู้ใช้ใหม่พร้อมแนบไฟล์ (เฉพาะ Admin) */}
         {isAdmin && (
           <div className="admin-create-box">
             <h4 className="admin-create-title">เพิ่มผู้ใช้ใหม่พร้อมแนบไฟล์ข้อมูล</h4>
@@ -406,18 +352,14 @@ export default function Home() {
           </div>
         )}
 
-        {/* ------------------------------------------------------------------------ */}
-        {/* ระบบค้นหาและกรองข้อมูล (Search & Filter ตามสิทธิ์ผู้ใช้งาน)               */}
-        {/* ------------------------------------------------------------------------ */}
+        {/* ระบบค้นหาและกรองข้อมูล */}
         <div className="filter-bar">
-          {/* ทุกสิทธิ์สามารถค้นหาตามชื่อได้ */}
           <input
             placeholder="ค้นหาชื่อผู้ใช้ (Search)..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
 
-          {/* เฉพาะ Admin ที่สามารถกรองตามระดับสิทธิ์ (Role Filter) ได้ */}
           {isAdmin && (
             <select value={role} onChange={e => setRole(e.target.value)}>
               <option value="">ทุกระดับบทบาท (All Roles)</option>
@@ -427,7 +369,6 @@ export default function Home() {
             </select>
           )}
 
-          {/* Admin และ Editonly ที่สามารถกรองสถานะออนไลน์ได้ */}
           {canEdit && (
             <select value={state} onChange={e => setState(e.target.value)}>
               <option value="">ทุกสถานะ (All Status)</option>
@@ -454,9 +395,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* ------------------------------------------------------------------------ */}
-        {/* แสดงรายการข้อมูลตามระดับสิทธิ์ของผู้ใช้งานในรูปแบบตาราง                     */}
-        {/* ------------------------------------------------------------------------ */}
+        {/* ตารางแสดงผลรายการข้อมูลผู้ใช้ */}
         <div className="table-wrapper">
           <table>
             <thead>
@@ -528,7 +467,6 @@ export default function Home() {
                       )}
                     </td>
 
-                    {/* การจัดการปุ่มแก้ไข/ลบ ตามระดับสิทธิ์ */}
                     {canEdit && (
                       <td>
                         {editId === u.id ? (

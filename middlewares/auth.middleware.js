@@ -1,15 +1,7 @@
 const jwt = require("jsonwebtoken")
 const JWT_SECRET = "TNK"
 
-// ====================================================================================
-// การพัฒนาระบบฝั่งเซิร์ฟเวอร์ (Back-end Development)
-// หัวข้อ: พัฒนาระบบตรวจสอบสิทธิ์ (Authorization Middleware) ตรวจสอบความถูกต้องของ Token ก่อนเข้าถึง Endpoint ที่ต้องใช้สิทธิ์
-// ====================================================================================
-
-/**
- * 1. auth: ตรวจสอบความถูกต้องของ Token (JWT Authentication)
- * ตรวจสอบ Token ที่ส่งมาทาง Authorization Header: Bearer <token>
- */
+// 1. Middleware ตรวจสอบ JWT Bearer Token และถอดรหัสข้อมูลผู้ใช้เก็บใน req.user
 const auth = (req, res, next) => {
   try {
     const authHeader = req.headers['authorization']
@@ -43,9 +35,7 @@ const auth = (req, res, next) => {
   }
 }
 
-/**
- * 2. adminOnly: ตรวจสอบสิทธิ์เฉพาะผู้ดูแลระบบ (Admin Authorization)
- */
+// 2. Middleware ตรวจสอบสิทธิ์เฉพาะผู้ดูแลระบบ (Admin Only)
 const adminOnly = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({
@@ -57,9 +47,7 @@ const adminOnly = (req, res, next) => {
   next()
 }
 
-/**
- * 3. canEdit: ตรวจสอบสิทธิ์สำหรับผู้ที่สามารถแก้ไขข้อมูลได้ (Admin หรือ Editonly)
- */
+// 3. Middleware ตรวจสอบสิทธิ์สำหรับผู้ที่แก้ไขข้อมูลได้ (Admin หรือ Editonly)
 const canEdit = (req, res, next) => {
   if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'editonly')) {
     return res.status(403).json({

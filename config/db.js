@@ -1,6 +1,6 @@
 const mysql = require("mysql2/promise")
 
-// ข้อมูลเชื่อมต่อ MySQL
+// 1. ตั้งค่าการเชื่อมต่อฐานข้อมูล MySQL Connection Pool
 const dbConfig = {
   host: "localhost",
   user: "root",
@@ -10,7 +10,7 @@ const dbConfig = {
 
 const db = mysql.createPool(dbConfig)
 
-// สร้างฐานข้อมูลและตารางเริ่มต้น
+// 2. ฟังก์ชันสร้างฐานข้อมูล ตาราง (users, log, status, files) และข้อมูลผู้ใช้เริ่มต้น
 const initDB = async () => {
   try {
     const rootConn = await mysql.createConnection({
@@ -21,7 +21,6 @@ const initDB = async () => {
     await rootConn.query("CREATE DATABASE IF NOT EXISTS `my_app`")
     await rootConn.end()
 
-    // ตาราง users
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -31,7 +30,6 @@ const initDB = async () => {
       )
     `)
 
-    // ข้อมูลผู้ใช้เริ่มต้น
     await db.query(`
       INSERT IGNORE INTO users (id, username, password, role) VALUES 
         (1, 'admin', 'admin', 'admin'), 
@@ -39,7 +37,6 @@ const initDB = async () => {
         (3, 'user', 'user', 'readonly')
     `)
 
-    // ตาราง log บันทึกเวลาล็อกอิน
     await db.query(`
       CREATE TABLE IF NOT EXISTS log (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -49,7 +46,6 @@ const initDB = async () => {
       )
     `)
 
-    // ตาราง status เก็บสถานะ on/off
     await db.query(`
       CREATE TABLE IF NOT EXISTS status (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,7 +55,6 @@ const initDB = async () => {
       )
     `)
 
-    // ตาราง files เก็บชื่อไฟล์แนบ
     await db.query(`
       CREATE TABLE IF NOT EXISTS files (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,7 +64,6 @@ const initDB = async () => {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `)
-
   } catch (e) {
     console.error("DB Init Error:", e.message)
   }

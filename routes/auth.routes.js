@@ -4,23 +4,11 @@ const db = require("../config/db")
 const { JWT_SECRET, auth } = require("../middlewares/auth.middleware")
 const router = express.Router()
 
-// ====================================================================================
-// การพัฒนาระบบฝั่งเซิร์ฟเวอร์ (Back-end Development)
-// หัวข้อ: พัฒนาระบบยืนยันตัวตน (Authentication)
-// ====================================================================================
-
-/**
- * 1. สร้าง API Login โดยออก JSON Web Token (JWT) ที่มีการลงนาม (Signing) อย่างปลอดภัย
- * Method: POST
- * Route: /api/login
- * Request Body: { username: string, password: string }
- * Response JSON: { status: 'success', message: string, data: { token, user: { id, username, role } } }
- */
+// 1. API เข้าสู่ระบบ (Login): ตรวจสอบบัญชี, บันทึกประวัติลง log, ปรับสถานะเป็น on, และออก JWT Token
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body
 
-    // ตรวจสอบข้อมูลนำเข้า
     if (!username || !password) {
       return res.status(400).json({
         status: "error",
@@ -29,7 +17,6 @@ router.post('/login', async (req, res) => {
       })
     }
 
-    // ตรวจสอบข้อมูลผู้ใช้ในฐานข้อมูล
     const [users] = await db.query(
       "SELECT id, username, password, role FROM users WHERE username = ? AND password = ?",
       [username, password]
@@ -45,23 +32,18 @@ router.post('/login', async (req, res) => {
 
     const user = users[0]
 
-    // บันทึกเวลาเข้าใช้งานลงตาราง log
     await db.query("INSERT INTO log (user_id, logged_at) VALUES (?, NOW())", [user.id])
-
-    // ปรับสถานะเป็นออนไลน์ (on) ลงตาราง status
     await db.query(`
       INSERT INTO status (user_id, state) VALUES (?, 'on')
       ON DUPLICATE KEY UPDATE state = 'on'
     `, [user.id])
 
-    // ออก JWT Token โดยลงนาม (Signing) ด้วย Secret Key
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },
       JWT_SECRET,
       { expiresIn: '1d' }
     )
 
-    // ส่งคืนข้อมูล Response Body แบบมาตรฐาน JSON
     return res.status(200).json({
       status: "success",
       message: "เข้าสู่ระบบสำเร็จ",
@@ -89,12 +71,7 @@ router.post('/login', async (req, res) => {
   }
 })
 
-/**
- * Method: POST
- * Route: /api/logout
- * Header: Authorization: Bearer <token>
- * คำอธิบาย: ออกจากระบบ และอัปเดตสถานะในระบบเป็น off
- */
+// 2. API ออกจากระบบ (Logout): ปรับสถานะในตาราง status เป็น off
 router.post('/logout', auth, async (req, res) => {
   try {
     await db.query("UPDATE status SET state = 'off' WHERE user_id = ?", [req.user.id])
@@ -113,12 +90,7 @@ router.post('/logout', auth, async (req, res) => {
   }
 })
 
-/**
- * Method: GET
- * Route: /api/me
- * Header: Authorization: Bearer <token>
- * คำอธิบาย: ดูข้อมูลและสถานะของผู้ใช้งานปัจจุบันที่เข้าสู่ระบบอยู่
- */
+// 3. API ดูข้อมูลและสถานะของผู้ใช้งานปัจจุบัน (Current User Profile)
 router.get('/me', auth, async (req, res) => {
   try {
     const [statusRows] = await db.query("SELECT state FROM status WHERE user_id = ?", [req.user.id])
