@@ -1,0 +1,19 @@
+{
+    local_certs
+}
+
+https://backend.mydomain.lab {
+    reverse_proxy app:5000
+}
+
+https://frontend.mydomain.lab {
+    reverse_proxy frontend:3000
+}
+
+https://gitlab.mydomain.lab {
+    reverse_proxy gitlab:80
+}
+
+https://registry.mydomain.lab {
+    reverse_proxy gitlab:5050
+}

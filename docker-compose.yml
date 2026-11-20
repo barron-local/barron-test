@@ -1,0 +1,74 @@
+services:
+  caddy:
+    image: caddy:alpine
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3001:3000"
+
+  app:
+    build: .
+    container_name: app
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: "password"
+      DB_NAME: my_app
+
+  db:
+    image: mysql:latest
+    container_name: db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "password"
+      MYSQL_DATABASE: my_app
+    volumes:
+      - db_data:/var/lib/mysql
+
+  gitlab:
+    image: gitlab/gitlab-ce:latest
+    container_name: gitlab
+    restart: always
+    hostname: 'gitlab.mydomain.lab'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.mydomain.lab'
+        nginx['listen_port'] = 80
+        nginx['listen_https'] = false
+        registry_external_url 'http://registry.mydomain.lab:5050'
+        registry_nginx['listen_port'] = 5050
+        registry_nginx['listen_https'] = false
+        gitlab_rails['initial_root_password'] = 'password'
+    volumes:
+      - gitlab_config:/etc/gitlab
+      - gitlab_logs:/var/log/gitlab
+      - gitlab_data:/var/opt/gitlab
+    shm_size: '256m'
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: always
+    depends_on:
+      - gitlab
+    volumes:
+      - ./runner:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  db_data:
+  gitlab_config:
+  gitlab_logs:
+  gitlab_data:
+  runner_config:
