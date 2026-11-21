@@ -164,6 +164,32 @@ fn_7_run_gitlab() {
   echo "--- สั่งรัน GitLab และ Runner สำเร็จ (รอประมาณ 2-3 นาทีเพื่อบูตระบบ) ---"
 }
 
+fn_8_setup_hosts() {
+  echo ""
+  echo ">>> [8] ตั้งค่า Local Domain Name Resolution (/etc/hosts)..."
+  SERVER_IP=$(hostname -I | awk '{print $1}')
+  [ -z "$SERVER_IP" ] && SERVER_IP="127.0.0.1"
+
+  # ลบของเก่าที่เคยมีออกก่อน เพื่อไม่ให้ซ้ำซ้อน
+  sed -i '/mydomain.lab/d' /etc/hosts
+
+  # เพิ่ม IP และโดเมนทั้งหมดลงใน /etc/hosts ของเครื่อง Ubuntu
+  echo -e "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
+  if [ "$SERVER_IP" != "127.0.0.1" ]; then
+    echo -e "${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
+  fi
+
+  echo "เพิ่ม mapping ลงใน /etc/hosts เรียบร้อยแล้ว:"
+  grep "mydomain.lab" /etc/hosts
+  echo ""
+  echo ">>> คำแนะนำสำหรับเครื่อง Windows Client (เครื่องที่เปิด Browser):"
+  echo "ให้เปิด Notepad ด้วยสิทธิ์ 'Run as Administrator' ไปที่ไฟล์:"
+  echo "  C:\\Windows\\System32\\drivers\\etc\\hosts"
+  echo "แล้วเพิ่มบรรทัดนี้ลงไป:"
+  echo "  ${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab"
+  echo "--- เสร็จสิ้นขั้นตอนที่ 8 ---"
+}
+
 # ==============================================================================
 # Interactive Menu
 # ==============================================================================
@@ -177,13 +203,14 @@ echo " 4) โหลด Docker Images จาก Flash Drive (.tar)"
 echo " 5) รัน DNS Server (Bind9 พร้อม ACL พอร์ต 53)"
 echo " 6) รัน Private Docker Registry (พอร์ต 5050)"
 echo " 7) รัน GitLab Server + GitLab Runner"
+echo " 8) ตั้งค่า Domain /etc/hosts (แก้ปัญหาเข้า frontend.mydomain.lab ไม่ได้)"
 echo "----------------------------------------------------------"
 echo " ตัวอย่างการระบุตัวเลือก:"
-echo "   - พิมพ์ '1,2'   -> เพื่อทำเฉพาะข้อ 1 และ 2"
-echo "   - พิมพ์ '3'     -> เพื่อติดตั้ง Docker แก้ไขปัญหา Podman"
+echo "   - พิมพ์ '8'     -> เพื่อเพิ่ม Domain frontend.mydomain.lab ลง /etc/hosts"
+echo "   - พิมพ์ '1,2,8' -> เพื่อทำเฉพาะข้อ 1, 2 และ 8"
 echo "   - พิมพ์ 'all'   -> เพื่อทำทุกข้อตามลำดับ"
 echo "=========================================================="
-read -p "กรุณาเลือกข้อที่ต้องการทำ (เช่น 1,2 หรือ 3 หรือ all): " USER_CHOICE
+read -p "กรุณาเลือกข้อที่ต้องการทำ (เช่น 8 หรือ 1,2 หรือ all): " USER_CHOICE
 
 if [ -z "$USER_CHOICE" ]; then
   echo "ยกเลิกการทำงาน"
@@ -194,7 +221,7 @@ fi
 CHOICES=$(echo "$USER_CHOICE" | tr ',' ' ')
 
 if [ "$USER_CHOICE" = "all" ]; then
-  CHOICES="1 2 3 4 5 6 7"
+  CHOICES="1 2 3 4 5 6 7 8"
 fi
 
 for c in $CHOICES; do
@@ -206,6 +233,7 @@ for c in $CHOICES; do
     5) fn_5_dns_server ;;
     6) fn_6_local_registry ;;
     7) fn_7_run_gitlab ;;
+    8) fn_8_setup_hosts ;;
     *) echo "ไม่พบตัวเลือก: $c" ;;
   esac
 done

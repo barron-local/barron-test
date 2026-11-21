@@ -127,6 +127,24 @@ sudo umount /mnt/usb
 sudo docker run -d --name registry --restart always -p 5050:5000 registry:2
 ```
 
+#### 1.9 ตั้งค่า Local Domain Name Resolution (/etc/hosts)
+*(สำคัญมาก: แก้ปัญหาเข้า `https://frontend.mydomain.lab/` หรือ `gitlab.mydomain.lab` ไม่ได้ เพราะเครื่องไม่รู้จักโดเมน `.lab`)*
+
+**1. บนเครื่อง Ubuntu:**
+```bash
+sudo bash -c 'echo "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts'
+```
+
+**2. บนเครื่อง Windows Client (เครื่องที่เปิด Web Browser):**
+- เปิด **Notepad** ด้วยสิทธิ์ **"Run as Administrator"**
+- ไปที่เมนู File -> Open -> เลือกไฟล์: `C:\Windows\System32\drivers\etc\hosts` *(เลือก All Files *.*)*
+- เพิ่มบรรทัดด้านล่างนี้ลงไปท้ายไฟล์ (แทนที่ IP ด้วย IP จริงของ Ubuntu):
+```text
+192.168.114.128 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab
+```
+- กด Save บันทึกไฟล์ -> จากนั้นเปิด Browser เข้า `https://frontend.mydomain.lab` หรือ `http://gitlab.mydomain.lab:8080` ได้ทันที!
+*(เนื่องจาก Caddy ใช้ Local Self-signed Cert เมื่อ Browser แจ้งเตือน ให้กด "Advanced" -> "Accept the Risk and Continue")*
+
 ---
 
 ## เฟสพิเศษ: การสร้างทางลัด SSH และย้ายไฟล์ผ่าน Windows Desktop
