@@ -13,31 +13,11 @@
 
 ---
 
-## เฟสที่ 0: การเตรียม Flash Drive จากบ้าน (Offline 100%)
+## เฟสที่ 0: การเตรียม Flash Drive จากบ้าน (Offline 100% - เตรียมไฟล์เรียบร้อยแล้ว)
 *(ทำล่วงหน้าก่อนวันแข่ง เพื่อแก้ปัญหาเน็ตสนามแข่งโหลด GitLab Image 3GB ไม่ทัน)*
 
-1. เปิด Terminal ในเครื่องที่มีเน็ต แล้วสั่งโหลด Image ทั้งหมด:
-   ```bash
-   docker pull gitlab/gitlab-ce:latest
-   docker pull gitlab/gitlab-runner:latest
-   docker pull mysql:8.0
-   docker pull registry:2
-   docker pull node:20-alpine
-   docker pull caddy:alpine
-   docker pull ubuntu/bind9:latest
-   ```
-2. สั่ง Export รวมเป็นไฟล์ `.tar` ก้อนเดียว:
-   ```bash
-   docker save -o gitlab-all-images.tar \
-     gitlab/gitlab-ce:latest \
-     gitlab/gitlab-runner:latest \
-     mysql:8.0 \
-     registry:2 \
-     node:20-alpine \
-     caddy:alpine \
-     ubuntu/bind9:latest
-   ```
-3. ก๊อปปี้ไฟล์ `gitlab-all-images.tar` เก็บใส่ **Flash Drive** พกไปวันแข่งจริง
+- **สถานะ:** ดาวน์โหลดและคัดลอกไฟล์ **`gitlab-all-images.tar` (1.83 GB)** ใส่ลงใน Flash Drive เรียบร้อยแล้ว (มี Image ครบทั้ง 7 ตัว: `gitlab-ce`, `gitlab-runner`, `mysql:8.0`, `registry:2`, `node:20-alpine`, `caddy:alpine`, `ubuntu/bind9:latest`)
+- **วันแข่งจริง:** เพียงพก Flash Drive นี้ไปเสียบเข้าเครื่องแล้วทำตาม [เฟสที่ 1](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ใน-vmware-วันแข่งจริง) ได้ทันที
 
 ---
 
