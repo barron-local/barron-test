@@ -1,7 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-# Interactive Setup Script for Ubuntu Server (DevOps Competition)
-# รองรับการกดรันแบบ One-Click (Auto All-in-One) หรือเลือกเฉพาะหัวข้อ
+# All-in-One Automated Setup Script for DevOps Competition
 # ==============================================================================
 
 if [ "$EUID" -ne 0 ]; then
@@ -20,108 +19,33 @@ get_server_ip() {
   echo "$ip"
 }
 
-fn_1_hostname_ssh_users() {
+fn_quick_docker_caddy() {
   echo ""
-  echo ">>> [1] ตั้งค่า Hostname, SSH, 2 Users (devops1, devops2) & Sudo NOPASSWD..."
-  hostnamectl set-hostname server-devops
-  apt update && apt install -y ca-certificates curl gnupg lsb-release openssh-server
-  systemctl enable --now ssh
+  echo "================================================================================"
+  echo ">>> [0] รัน Full Stack (Docker Compose + Caddy Reverse Proxy + DNS + /etc/hosts)..."
+  echo "================================================================================"
 
-  id -u devops1 &>/dev/null || adduser devops1 --gecos "" --disabled-password
-  echo "devops1:1234" | chpasswd --crypt-method SHA512
-  usermod -aG sudo devops1
-
-  id -u devops2 &>/dev/null || adduser devops2 --gecos "" --disabled-password
-  echo "devops2:1234" | chpasswd --crypt-method SHA512
-  usermod -aG sudo devops2
-
-  echo -e "devops1 ALL=(ALL) NOPASSWD:ALL\ndevops2 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/devops-nopasswd
-  chmod 0440 /etc/sudoers.d/devops-nopasswd
-  echo "--- เสร็จสิ้นขั้นตอนที่ 1 ---"
-}
-
-fn_2_firewall() {
-  echo ""
-  echo ">>> [2] กำหนดค่า Firewall (UFW) พอร์ต 22, 80, 443, 53, 3000, 3306, 5000, 5050, 8080..."
-  apt install -y ufw
-  ufw allow 22/tcp
-  ufw allow 80/tcp
-  ufw allow 443/tcp
-  ufw allow 3000/tcp
-  ufw allow 3306/tcp   # รองรับ DBeaver เชื่อมต่อฐานข้อมูลจากภายนอก
-  ufw allow 5000/tcp
-  ufw allow 5050/tcp
-  ufw allow 8080/tcp
-  ufw allow 53
-  ufw --force enable
-  echo "--- เสร็จสิ้นขั้นตอนที่ 2 ---"
-}
-
-fn_3_docker_install() {
-  echo ""
-  echo ">>> [3] ตรวจสอบและแก้ไขปัญหา Podman แทรกแซง + ติดตั้ง Docker แท้ 100%..."
-
-  # 1. ปิด service และ socket ของ podman ทันที
-  systemctl stop podman.socket podman 2>/dev/null || true
-  systemctl disable podman.socket podman 2>/dev/null || true
-
-  # 2. ถอน Podman และตัว alias ทั้งหมดทิ้งอย่างหมดจด
-  apt-get purge -y podman podman-docker containernetworking-plugins 2>/dev/null || true
-  apt-get autoremove -y 2>/dev/null || true
-
-  # 3. ลบ alias หรือ wrapper ของ docker ที่ชี้ไปหา podman ใน PATH
-  rm -f /usr/bin/podman-docker /usr/local/bin/docker /etc/containers/nodocker 2>/dev/null || true
-
-  # 4. ติดตั้ง Docker Engine และ Docker Compose v2 แท้
-  echo "กำลังติดตั้ง Docker Engine และ Docker Compose v2..."
-  apt-get update
-  apt-get install -y docker.io docker-compose-v2
-
-  # 5. เปิด Service ของ Docker Daemon จริง
-  systemctl unmask docker.service 2>/dev/null || true
-  systemctl unmask docker.socket 2>/dev/null || true
-  systemctl enable --now docker.service
-  systemctl restart docker.service
-
-  # 6. เพิ่มสิทธิ์กลุ่ม docker ให้ user ทั้งหมด
-  [ -n "$SUDO_USER" ] && usermod -aG docker "$SUDO_USER" 2>/dev/null || true
-  usermod -aG docker devops 2>/dev/null || true
-  usermod -aG docker devops1 2>/dev/null || true
-  usermod -aG docker devops2 2>/dev/null || true
-
-  # 7. ฝังตัวแปร DOCKER_HOST=/var/run/docker.sock ลงใน Profile ทุก User และลบ podman socket ทิ้งถาวร
-  echo 'export DOCKER_HOST="unix:///var/run/docker.sock"' > /etc/profile.d/docker-host.sh
-  chmod +x /etc/profile.d/docker-host.sh
-  systemctl --user -M devops@ stop podman.socket podman 2>/dev/null || true
-  rm -rf /run/user/*/podman 2>/dev/null || true
-
-  echo "ตรวจสอบสถานะ Docker:"
-  docker --version
-  docker compose version
-  echo "--- เสร็จสิ้นขั้นตอนที่ 3 (ลบ Podman เรียบร้อย สลับมาใช้ Docker แท้ 100%) ---"
-}
-
-fn_4_load_images() {
-  echo ""
-  echo ">>> [4] โหลด Docker Image ทั้งหมดจาก Flash Drive..."
-  echo "กำลังค้นหาไฟล์ gitlab-all-images.tar ใน /mnt หรือ /media..."
-  TAR_FILE=$(find /media /mnt -name "gitlab-all-images.tar" 2>/dev/null | head -n 1)
-
-  if [ -n "$TAR_FILE" ]; then
-    echo "พบไฟล์: $TAR_FILE"
-    docker load -i "$TAR_FILE"
-    echo "--- โหลด Image เรียบร้อย ---"
-  else
-    echo "ไม่พบไฟล์ที่ Mount อัตโนมัติใน /mnt หรือ /media"
-    echo "รายการบล็อกอุปกรณ์ดิสก์:"
-    lsblk
-    echo "หากมีไฟล์ .tar ให้สั่งโหลดด้วยคำสั่ง: sudo docker load -i <path-to-file.tar>"
+  # 1. ตรวจสอบและตั้งค่า Local Hosts
+  SERVER_IP=$(get_server_ip)
+  sed -i '/mydomain.lab/d' /etc/hosts
+  echo -e "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
+  if [ "$SERVER_IP" != "127.0.0.1" ]; then
+    echo -e "${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
   fi
-}
 
-fn_5_dns_server() {
-  echo ""
-  echo ">>> [5] รัน DNS Server (Bind9 พร้อม ACL) บนพอร์ต 53..."
+  # 2. เปิด Firewall สำหรับ Caddy และ Services พื้นฐาน
+  apt install -y ufw &>/dev/null || true
+  ufw allow 80/tcp &>/dev/null || true
+  ufw allow 443/tcp &>/dev/null || true
+  ufw allow 3000/tcp &>/dev/null || true
+  ufw allow 3306/tcp &>/dev/null || true
+  ufw allow 5000/tcp &>/dev/null || true
+  ufw allow 5050/tcp &>/dev/null || true
+  ufw allow 8080/tcp &>/dev/null || true
+  ufw allow 53 &>/dev/null || true
+  ufw --force enable &>/dev/null || true
+
+  # 3. รัน DNS Server (Bind9 พร้อม ACL)
   mkdir -p /opt/dns-server/named-conf
   cat << 'EOF' > /opt/dns-server/named-conf/named.conf
 acl "trusted_clients" { 192.168.0.0/16; 172.16.0.0/12; 10.0.0.0/8; localhost; };
@@ -136,35 +60,11 @@ options {
 EOF
   docker rm -f dns-server 2>/dev/null || true
   docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest 2>/dev/null || true
-  echo "--- เสร็จสิ้นขั้นตอนที่ 5 ---"
-}
 
-fn_8_setup_hosts() {
-  echo ""
-  echo ">>> [8] ตั้งค่า Local Domain Name Resolution (/etc/hosts)..."
-  SERVER_IP=$(get_server_ip)
-
-  # ลบของเก่าที่เคยมีออกก่อน เพื่อไม่ให้ซ้ำซ้อน
-  sed -i '/mydomain.lab/d' /etc/hosts
-
-  # เพิ่ม IP และโดเมนทั้งหมดลงใน /etc/hosts ของเครื่อง Ubuntu
-  echo -e "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
-  if [ "$SERVER_IP" != "127.0.0.1" ]; then
-    echo -e "${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
-  fi
-
-  echo "เพิ่ม mapping ลงใน /etc/hosts ของ Ubuntu เรียบร้อยแล้ว:"
-  grep "mydomain.lab" /etc/hosts
-  echo "--- เสร็จสิ้นขั้นตอนที่ 8 ---"
-}
-
-fn_run_compose_all() {
-  echo ""
-  echo ">>> กำลัง Build และ Start ทุก Services ผ่าน Docker Compose (Caddy, Frontend, App, DB, GitLab)..."
+  # 4. Build & Up ทุก Containers ใน docker-compose.yml
   cd "$SCRIPT_DIR"
-
-  # ตรวจสอบว่า docker-compose.yml มีอยู่หรือไม่
   if [ -f "docker-compose.yml" ]; then
+    echo "กำลังสั่ง docker compose up -d --build..."
     docker compose up -d --build
     echo ""
     echo "สถานะ Containers ล่าสุด:"
@@ -172,6 +72,115 @@ fn_run_compose_all() {
   else
     echo "ไม่พบไฟล์ docker-compose.yml ใน $SCRIPT_DIR"
   fi
+
+  # 5. แสดงคำสั่งสำหรับ Windows Client
+  show_windows_powershell_cmd
+}
+
+fn_interactive_firewall() {
+  echo ""
+  echo "================================================================================"
+  echo ">>> จัดการ Firewall (UFW) แบบกำหนดเอง"
+  echo "================================================================================"
+  apt install -y ufw &>/dev/null || true
+  ufw status numbered
+  echo ""
+  echo "เลือกการทำงาน:"
+  echo "  1) เปิดพอร์ต (Allow Port)"
+  echo "  2) ปิด/บล็อกพอร์ต (Deny Port)"
+  echo "  3) ลบกฎ (Delete Rule)"
+  echo "  4) เปิดพอร์ตมาตรฐานทั้งหมดตามโจทย์ (22, 80, 443, 53, 3000, 3306, 5000, 5050, 8080)"
+  echo "--------------------------------------------------------------------------------"
+  read -p "กรุณาเลือก (1-4): " FW_ACTION
+
+  case $FW_ACTION in
+    1)
+      read -p "ระบุพอร์ตที่ต้องการเปิด (เช่น 80 หรือ 80/tcp หรือหลายพอร์ต เช่น 80,443,3306): " PORTS_IN
+      for p in $(echo "$PORTS_IN" | tr ',' ' '); do
+        ufw allow "$p"
+        echo "เปิดพอร์ต $p เรียบร้อย"
+      done
+      ;;
+    2)
+      read -p "ระบุพอร์ตที่ต้องการปิด/บล็อก (Deny) (เช่น 22 หรือ 22/tcp): " PORTS_IN
+      for p in $(echo "$PORTS_IN" | tr ',' ' '); do
+        ufw deny "$p"
+        echo "บล็อกพอร์ต $p เรียบร้อย"
+      done
+      ;;
+    3)
+      read -p "ระบุหมายเลขกฎที่ต้องการลบ (ดูเลขจากด้านบน): " RULE_NUM
+      if [ -n "$RULE_NUM" ]; then
+        echo "y" | ufw delete "$RULE_NUM"
+      fi
+      ;;
+    4)
+      for p in 22/tcp 80/tcp 443/tcp 3000/tcp 3306/tcp 5000/tcp 5050/tcp 8080/tcp 53; do
+        ufw allow "$p"
+      done
+      echo "เปิดพอร์ตมาตรฐานทั้งหมดเรียบร้อย"
+      ;;
+    *)
+      echo "ยกเลิก"
+      ;;
+  esac
+
+  ufw --force enable &>/dev/null || true
+  echo ""
+  echo "สถานะ Firewall ล่าสุด:"
+  ufw status
+}
+
+fn_docker_install() {
+  echo ""
+  echo ">>> ตรวจสอบและแก้ไขปัญหา Podman แทรกแซง + ติดตั้ง Docker แท้ 100%..."
+  systemctl stop podman.socket podman 2>/dev/null || true
+  systemctl disable podman.socket podman 2>/dev/null || true
+  apt-get purge -y podman podman-docker containernetworking-plugins 2>/dev/null || true
+  apt-get autoremove -y 2>/dev/null || true
+  rm -f /usr/bin/podman-docker /usr/local/bin/docker /etc/containers/nodocker 2>/dev/null || true
+
+  apt-get update
+  apt-get install -y docker.io docker-compose-v2
+  systemctl unmask docker.service docker.socket 2>/dev/null || true
+  systemctl enable --now docker.service
+  systemctl restart docker.service
+
+  [ -n "$SUDO_USER" ] && usermod -aG docker "$SUDO_USER" 2>/dev/null || true
+  usermod -aG docker devops 2>/dev/null || true
+
+  echo 'export DOCKER_HOST="unix:///var/run/docker.sock"' > /etc/profile.d/docker-host.sh
+  chmod +x /etc/profile.d/docker-host.sh
+  systemctl --user -M devops@ stop podman.socket podman 2>/dev/null || true
+  rm -rf /run/user/*/podman 2>/dev/null || true
+
+  echo "Docker version: $(docker --version)"
+  echo "Docker compose version: $(docker compose version)"
+}
+
+fn_load_images() {
+  echo ""
+  echo ">>> โหลด Docker Image ทั้งหมดจาก Flash Drive (.tar)..."
+  TAR_FILE=$(find /media /mnt -name "gitlab-all-images.tar" 2>/dev/null | head -n 1)
+  if [ -n "$TAR_FILE" ]; then
+    echo "พบไฟล์: $TAR_FILE"
+    docker load -i "$TAR_FILE"
+  else
+    echo "ไม่พบไฟล์ที่ Mount อัตโนมัติ"
+    lsblk
+    echo "ใช้คำสั่ง: sudo docker load -i <path-to-tar>"
+  fi
+}
+
+fn_cleanup_disk_space() {
+  echo ""
+  echo ">>> ล้างขยะและเคลียร์พื้นที่ดิสก์ (แก้ปัญหา no space left on device)..."
+  apt-get clean
+  docker builder prune -af 2>/dev/null || true
+  docker image prune -f 2>/dev/null || true
+  rm -rf /tmp/* /tmp/.* 2>/dev/null || true
+  rm -rf ~/.cache/* 2>/dev/null || true
+  df -h /
 }
 
 show_windows_powershell_cmd() {
@@ -180,7 +189,7 @@ show_windows_powershell_cmd() {
   echo "================================================================================"
   echo "  คำสั่งตั้งค่าบนเครื่อง WINDOWS CLIENT (เพื่อเข้าเว็บผ่าน Custom Domain)"
   echo "================================================================================"
-  echo "เปิด PowerShell บนเครื่อง Windows ด้วยสิทธิ์ 'Run as Administrator' แล้วก๊อปปี้ไปวาง:"
+  echo "เปิด PowerShell บนเครื่อง Windows ด้วยสิทธิ์ 'Run as Administrator' แล้ววางคำสั่งนี้:"
   echo ""
   echo -e "\e[1;32mAdd-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab\" -Force\e[0m"
   echo ""
@@ -194,80 +203,33 @@ show_windows_powershell_cmd() {
   echo ""
 }
 
-fn_auto_all_in_one() {
-  echo ""
-  echo "================================================================================"
-  echo "   เริ่มการติดตั้งแบบครบวงจรในปุ่มเดียว (Auto All-in-One Full Setup)"
-  echo "================================================================================"
-  fn_1_hostname_ssh_users
-  fn_2_firewall
-  fn_3_docker_install
-  fn_4_load_images
-  fn_5_dns_server
-  fn_8_setup_hosts
-  fn_run_compose_all
-  show_windows_powershell_cmd
-}
-
-fn_cleanup_disk_space() {
-  echo ""
-  echo ">>> ล้างขยะและเคลียร์พื้นที่ดิสก์ (แก้ปัญหา no space left on device)..."
-  apt-get clean
-  docker builder prune -af 2>/dev/null || true
-  docker image prune -f 2>/dev/null || true
-  rm -rf /tmp/* /tmp/.* 2>/dev/null || true
-  rm -rf ~/.cache/* 2>/dev/null || true
-  echo "สถานะพื้นที่ดิสก์ล่าสุด:"
-  df -h /
-  echo "--- ล้างพื้นที่ดิสก์เรียบร้อย ---"
-}
-
 # ==============================================================================
 # Interactive Menu
 # ==============================================================================
 echo "================================================================================"
 echo "      DevOps Ubuntu Server - All-in-One Automated Setup Script"
 echo "================================================================================"
-echo " 0) [AUTO] One-Click Full Setup (ทำครบทุกอย่าง + Start Docker + Caddy + ออกคำสั่ง Windows)"
-echo " 1) Hostname + SSH Server + 2 Users (devops1, devops2) + Sudo NOPASSWD"
-echo " 2) Firewall UFW (เปิดพอร์ต 22, 80, 443, 53, 3000, 3306, 5000, 5050, 8080)"
-echo " 3) ติดตั้ง Docker & Docker Compose Plugin แท้ (ลบ podman ออก)"
-echo " 4) โหลด Docker Images จาก Flash Drive (.tar)"
-echo " 5) รัน DNS Server (Bind9 พร้อม ACL พอร์ต 53)"
-echo " 6) Build & Start Docker Compose (Caddy Reverse Proxy, App, Frontend, DB, GitLab)"
-echo " 7) ตั้งค่า Domain /etc/hosts (พร้อมแสดงคำสั่ง PowerShell สำหรับ Windows)"
-echo " 8) แสดงคำสั่ง PowerShell สำหรับเครื่อง Windows อีกครั้ง"
-echo " 9) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
+echo " 0) [AUTO] Quick Deploy Docker + Caddy Proxy + Hosts (กด Enter รันทันที)"
+echo " 1) จัดการ Firewall UFW (เลือกแล้วจะถาม Port ที่ต้องการเปิด หรือ ปิด)"
+echo " 2) ติดตั้ง Docker Engine & Compose แท้ (ลบ podman ทิ้ง)"
+echo " 3) โหลด Docker Images จาก Flash Drive (.tar)"
+echo " 4) แสดงคำสั่ง PowerShell สำหรับตั้งค่า hosts บนเครื่อง Windows"
+echo " 5) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
 echo "--------------------------------------------------------------------------------"
-echo " แนะนำ: เลือก '0' สำหรับรันทีเดียวพร้อมใช้งานทันที (One-Click)"
-echo " หรือพิมพ์ตัวเลขเจาะจง เช่น '6,7' หรือ '8'"
+echo " แนะนำ: กด 0 หรือ Enter เพื่อรัน Docker + Caddy Proxy ทันทีโดยไม่ต้องตั้งค่า User ซ้ำซ้อน"
 echo "================================================================================"
-read -p "กรุณาเลือกตัวเลือก (กด 0 หรือ Enter เพื่อทำ Full Auto): " USER_CHOICE
+read -p "กรุณาเลือกตัวเลือก (กด 0 หรือ Enter เพื่อรัน Quick Deploy): " USER_CHOICE
 
-if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ] || [ "$USER_CHOICE" = "all" ]; then
-  fn_auto_all_in_one
+if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ]; then
+  fn_quick_docker_caddy
   exit 0
 fi
 
-# แปลงเป็น array คั่นด้วยจุลภาคหรือเว้นวรรค
-CHOICES=$(echo "$USER_CHOICE" | tr ',' ' ')
-
-for c in $CHOICES; do
-  case $c in
-    1) fn_1_hostname_ssh_users ;;
-    2) fn_2_firewall ;;
-    3) fn_3_docker_install ;;
-    4) fn_4_load_images ;;
-    5) fn_5_dns_server ;;
-    6) fn_run_compose_all ;;
-    7) fn_8_setup_hosts; show_windows_powershell_cmd ;;
-    8) show_windows_powershell_cmd ;;
-    9) fn_cleanup_disk_space ;;
-    *) echo "ไม่พบตัวเลือก: $c" ;;
-  esac
-done
-
-echo ""
-echo "================================================================================"
-echo " ดำเนินการตามตัวเลือก ($USER_CHOICE) เสร็จสมบูรณ์แล้ว!"
-echo "================================================================================"
+case $USER_CHOICE in
+  1) fn_interactive_firewall ;;
+  2) fn_docker_install ;;
+  3) fn_load_images ;;
+  4) show_windows_powershell_cmd ;;
+  5) fn_cleanup_disk_space ;;
+  *) echo "ไม่พบตัวเลือก: $USER_CHOICE" ;;
+esac
