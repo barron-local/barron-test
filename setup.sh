@@ -146,7 +146,7 @@ fn_7_run_gitlab() {
       external_url 'http://${SERVER_IP}:8080';
       nginx['listen_port'] = 80;
       nginx['listen_https'] = false;
-      gitlab_rails['initial_root_password'] = 'devops';
+      gitlab_rails['initial_root_password'] = 'devops1234';
     " \
     -v /srv/gitlab/config:/etc/gitlab \
     -v /srv/gitlab/logs:/var/log/gitlab \

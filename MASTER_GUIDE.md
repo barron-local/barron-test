@@ -153,7 +153,7 @@ scp -r C:\Users\Woradech\Desktop\barron-test devops1@192.168.114.128:~/
 ## เฟสที่ 2: การเปิดใช้งาน GitLab & Runner (แบบไม่ต้องต่อเน็ต)
 *(เกณฑ์ข้อ 2.4, 2.6, 2.7: ติดตั้ง GitLab, Runner, และ CI/CD Pipeline)*
 
-### 2.1 สั่งรัน GitLab Container (กำหนดรหัสผ่าน root เป็น `devops` ทันที)
+### 2.1 สั่งรัน GitLab Container (กำหนดรหัสผ่าน root เป็น `devops1234` ทันที)
 ```bash
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
@@ -164,13 +164,13 @@ sudo docker run -d \
   -p 8080:80 \
   -p 2222:22 \
   -e GITLAB_OMNIBUS_CONFIG="
-    external_url 'http://gitlab.mydomain.lab';
+    external_url 'http://gitlab.mydomain.lab:8080';
     nginx['listen_port'] = 80;
     nginx['listen_https'] = false;
     registry_external_url 'http://registry.mydomain.lab:5050';
     registry_nginx['listen_port'] = 5050;
     registry_nginx['listen_https'] = false;
-    gitlab_rails['initial_root_password'] = 'devops';
+    gitlab_rails['initial_root_password'] = 'devops1234';
   " \
   -v /srv/gitlab/config:/etc/gitlab \
   -v /srv/gitlab/logs:/var/log/gitlab \
@@ -191,11 +191,11 @@ sudo docker run -d \
 ```
 
 ### 2.3 สร้างโปรเจกต์และเชื่อมต่อ Runner บนเว็บ GitLab:
-1. เปิด Browser บนเครื่อง Windows เข้าไปที่: `http://<IP_UBUNTU>:8080` (หรือ `http://gitlab.mydomain.lab`)
+1. เปิด Browser บนเครื่อง Windows เข้าไปที่: `http://<IP_UBUNTU>:8080` (หรือ `http://gitlab.mydomain.lab:8080`)
 2. ล็อกอินด้วย:
    - **Username:** `root`
-   - **Password:** `devops`
-3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops`)
+   - **Password:** `devops1234` *(GitLab บังคับรหัสผ่านอย่างน้อย 8 ตัวอักษร)*
+3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops1234`)
 4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `barron-test`
 5. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> ก๊อปปี้ Registration Token มาวางในคำสั่งด้านล่าง:
    ```bash
