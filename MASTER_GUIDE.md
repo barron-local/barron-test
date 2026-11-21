@@ -82,7 +82,7 @@ sudo bash setup.sh
 ## เฟสที่ 2: การเปิดใช้งาน GitLab & Runner (แบบไม่ต้องต่อเน็ต)
 *(เกณฑ์ข้อ 2.4, 2.6, 2.7: ติดตั้ง GitLab, Runner, และ CI/CD Pipeline)*
 
-### 2.1 สั่งรัน GitLab Container (กำหนดรหัสผ่าน root เป็น `admin1234` ทันที)
+### 2.1 สั่งรัน GitLab Container (กำหนดรหัสผ่าน root เป็น `devops` ทันที)
 ```bash
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
@@ -92,7 +92,15 @@ sudo docker run -d \
   --hostname gitlab.mydomain.lab \
   -p 8080:80 \
   -p 2222:22 \
-  -e GITLAB_ROOT_PASSWORD="admin1234" \
+  -e GITLAB_OMNIBUS_CONFIG="
+    external_url 'http://gitlab.mydomain.lab';
+    nginx['listen_port'] = 80;
+    nginx['listen_https'] = false;
+    registry_external_url 'http://registry.mydomain.lab:5050';
+    registry_nginx['listen_port'] = 5050;
+    registry_nginx['listen_https'] = false;
+    gitlab_rails['initial_root_password'] = 'devops';
+  " \
   -v /srv/gitlab/config:/etc/gitlab \
   -v /srv/gitlab/logs:/var/log/gitlab \
   -v /srv/gitlab/data:/var/opt/gitlab \
@@ -112,12 +120,13 @@ sudo docker run -d \
 ```
 
 ### 2.3 สร้างโปรเจกต์และเชื่อมต่อ Runner บนเว็บ GitLab:
-1. เปิด Browser บนเครื่อง Windows เข้าไปที่: `http://<IP_UBUNTU>:8080`
+1. เปิด Browser บนเครื่อง Windows เข้าไปที่: `http://<IP_UBUNTU>:8080` (หรือ `http://gitlab.mydomain.lab`)
 2. ล็อกอินด้วย:
    - **Username:** `root`
-   - **Password:** `admin1234`
-3. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `barron-test`
-4. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> ก๊อปปี้ Registration Token มาวางในคำสั่งด้านล่าง:
+   - **Password:** `devops`
+3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops`)
+4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `barron-test`
+5. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> ก๊อปปี้ Registration Token มาวางในคำสั่งด้านล่าง:
    ```bash
    sudo docker exec -it gitlab-runner gitlab-runner register \
      --non-interactive \
@@ -203,7 +212,7 @@ sudo docker compose ps
 | บริการ | URL / Port | บัญชีผู้ใช้งานเริ่มต้น |
 | :--- | :--- | :--- |
 | **Web Frontend (HTTPS)** | `https://<IP_UBUNTU>` | `admin` / `admin`, `editor` / `editor`, `user` / `user` |
-| **GitLab Web UI** | `http://<IP_UBUNTU>:8080` | `root` / `admin1234` |
+| **GitLab Web UI** | `http://<IP_UBUNTU>:8080` | `root` / `devops` (หรือ user `devops` / `devops`) |
 | **SSH Server** | พอร์ต `22` | `devops1` / `1234`, `devops2` / `1234` (sudo -i ได้ไม่ต้องใส่รหัส) |
 | **Backend Express API** | พอร์ต `5000` | RESTful API |
 | **Docker Registry** | `http://<IP_UBUNTU>:5050` | Private Image Registry |
