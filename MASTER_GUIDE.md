@@ -219,6 +219,12 @@ sudo docker run -d \
 2. ล็อกอินด้วย:
    - **Username:** `root`
    - **Password:** `devops1234` *(GitLab บังคับรหัสผ่านอย่างน้อย 8 ตัวอักษร)*
+   > [!TIP]
+   > **กรณีเข้าสู่ระบบไม่ได้ (Invalid login or password / หา root ไม่เจอ):**
+   > รันคำสั่งกู้คืนหรือสร้างบัญชี root ทันทีใน 15 วินาที:
+   > ```bash
+   > docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true); user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.skip_confirmation! if user.respond_to?(:skip_confirmation!); user.save!(validate: false); puts 'Root user ready!'"
+   > ```
 3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops1234`)
 4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `barron-test`
 5. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> ก๊อปปี้ Registration Token มาวางในคำสั่งด้านล่าง:

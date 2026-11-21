@@ -203,6 +203,17 @@ show_windows_powershell_cmd() {
   echo ""
 }
 
+fn_reset_gitlab_root() {
+  echo ""
+  echo ">>> บังคับตั้งค่า/สร้างบัญชี root ของ GitLab เป็น 'devops1234'..."
+  if ! docker ps | grep -q gitlab; then
+    echo "ข้อผิดพลาด: คอนเทนเนอร์ gitlab ยังไม่ได้รัน หรือกำลังบูตอยู่"
+    return 1
+  fi
+  docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true); user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.skip_confirmation! if user.respond_to?(:skip_confirmation!); user.save!(validate: false); puts 'Root user ready!'"
+  echo "--- บัญชี root: devops1234 พร้อมใช้งาน 100% ---"
+}
+
 # ==============================================================================
 # Interactive Menu
 # ==============================================================================
@@ -214,7 +225,8 @@ echo " 1) จัดการ Firewall UFW (เลือกแล้วจะถ�
 echo " 2) ติดตั้ง Docker Engine & Compose แท้ (ลบ podman ทิ้ง)"
 echo " 3) โหลด Docker Images จาก Flash Drive (.tar)"
 echo " 4) แสดงคำสั่ง PowerShell สำหรับตั้งค่า hosts บนเครื่อง Windows"
-echo " 5) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
+echo " 5) บังคับรีเซ็ต/สร้างบัญชี GitLab root เป็น 'devops1234'"
+echo " 6) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
 echo "--------------------------------------------------------------------------------"
 echo " แนะนำ: กด 0 หรือ Enter เพื่อรัน Docker + Caddy Proxy ทันทีโดยไม่ต้องตั้งค่า User ซ้ำซ้อน"
 echo "================================================================================"
@@ -230,6 +242,7 @@ case $USER_CHOICE in
   2) fn_docker_install ;;
   3) fn_load_images ;;
   4) show_windows_powershell_cmd ;;
-  5) fn_cleanup_disk_space ;;
+  5) fn_reset_gitlab_root ;;
+  6) fn_cleanup_disk_space ;;
   *) echo "ไม่พบตัวเลือก: $USER_CHOICE" ;;
 esac
