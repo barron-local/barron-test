@@ -1,13 +1,22 @@
 #!/bin/bash
 # ==============================================================================
 # Interactive Setup Script for Ubuntu Server (DevOps Competition)
-# รองรับการเลือกทำเฉพาะหัวข้อ เช่นพิมพ์ 1,2 หรือ 3 หรือ all
+# รองรับการเลือกทำเฉพาะหัวข้อ เช่นพิมพ์ 1,2 หรือ 8 หรือ all
 # ==============================================================================
 
 if [ "$EUID" -ne 0 ]; then
   echo "กรุณารันสคริปต์ด้วย sudo: sudo bash $0"
   exit 1
 fi
+
+get_server_ip() {
+  local ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}')
+  if [ -z "$ip" ]; then
+    ip=$(hostname -I | tr ' ' '\n' | grep -v '^172\.' | grep -v '^127\.' | head -n 1)
+  fi
+  [ -z "$ip" ] && ip="127.0.0.1"
+  echo "$ip"
+}
 
 fn_1_hostname_ssh_users() {
   echo ""
@@ -26,12 +35,13 @@ fn_1_hostname_ssh_users() {
 
 fn_2_firewall() {
   echo ""
-  echo ">>> [2] กำหนดค่า Firewall (UFW) พอร์ต 22, 80, 443, 53, 3000, 5000, 5050, 8080..."
+  echo ">>> [2] กำหนดค่า Firewall (UFW) พอร์ต 22, 80, 443, 53, 3000, 3306, 5000, 5050, 8080..."
   apt install -y ufw
   ufw allow 22/tcp
   ufw allow 80/tcp
   ufw allow 443/tcp
   ufw allow 3000/tcp
+  ufw allow 3306/tcp   # รองรับ DBeaver เชื่อมต่อฐานข้อมูลจากภายนอก
   ufw allow 5000/tcp
   ufw allow 5050/tcp
   ufw allow 8080/tcp
@@ -132,7 +142,7 @@ fn_6_local_registry() {
 fn_7_run_gitlab() {
   echo ""
   echo ">>> [7] รัน GitLab & GitLab Runner Container..."
-  SERVER_IP=$(hostname -I | awk '{print $1}')
+  SERVER_IP=$(get_server_ip)
   echo "Server IP: $SERVER_IP (เข้าเว็บ: http://${SERVER_IP}:8080)"
 
   docker rm -f gitlab 2>/dev/null || true
@@ -167,8 +177,7 @@ fn_7_run_gitlab() {
 fn_8_setup_hosts() {
   echo ""
   echo ">>> [8] ตั้งค่า Local Domain Name Resolution (/etc/hosts)..."
-  SERVER_IP=$(hostname -I | awk '{print $1}')
-  [ -z "$SERVER_IP" ] && SERVER_IP="127.0.0.1"
+  SERVER_IP=$(get_server_ip)
 
   # ลบของเก่าที่เคยมีออกก่อน เพื่อไม่ให้ซ้ำซ้อน
   sed -i '/mydomain.lab/d' /etc/hosts
@@ -183,11 +192,35 @@ fn_8_setup_hosts() {
   grep "mydomain.lab" /etc/hosts
   echo ""
   echo ">>> คำแนะนำสำหรับเครื่อง Windows Client (เครื่องที่เปิด Browser):"
-  echo "ให้เปิด Notepad ด้วยสิทธิ์ 'Run as Administrator' ไปที่ไฟล์:"
-  echo "  C:\\Windows\\System32\\drivers\\etc\\hosts"
-  echo "แล้วเพิ่มบรรทัดนี้ลงไป:"
-  echo "  ${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab"
+  echo "เปิด PowerShell (Run as Administrator) แล้วรันคำสั่งนี้:"
+  echo "  Add-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab\""
   echo "--- เสร็จสิ้นขั้นตอนที่ 8 ---"
+}
+
+fn_9_gitlab_root_password_devops() {
+  echo ""
+  echo ">>> [9] บังคับรีเซ็ตรหัสผ่าน root ของ GitLab ให้เป็น 'devops' (Bypass 8 chars validation)..."
+  if ! docker ps | grep -q gitlab; then
+    echo "ข้อผิดพลาด: คอนเทนเนอร์ gitlab ยังไม่ได้รัน หรือกำลังบูตอยู่ กรุณารอสักครู่"
+    return 1
+  fi
+  echo "กำลังรัน Rails runner เพื่อเปลี่ยนรหัสผ่าน root เป็น devops..."
+  docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root'); user.password = 'devops'; user.password_confirmation = 'devops'; user.save(validate: false)"
+  echo "--- ตั้งรหัสผ่าน root เป็น 'devops' สำเร็จ 100% เรียบร้อย ---"
+}
+
+fn_10_cleanup_disk_space() {
+  echo ""
+  echo ">>> [10] ล้างขยะและเคลียร์พื้นที่ดิสก์ (แก้ปัญหา no space left on device)..."
+  echo "กำลังล้างแคช apt, docker builder cache, dangling images, และโฟลเดอร์ชั่วคราว..."
+  apt-get clean
+  docker builder prune -af 2>/dev/null || true
+  docker image prune -f 2>/dev/null || true
+  rm -rf /tmp/* /tmp/.* 2>/dev/null || true
+  rm -rf ~/.cache/* 2>/dev/null || true
+  echo "สถานะพื้นที่ดิสก์ล่าสุด:"
+  df -h /
+  echo "--- ล้างพื้นที่ดิสก์เรียบร้อย ---"
 }
 
 # ==============================================================================
@@ -197,20 +230,24 @@ echo "=========================================================="
 echo "   DevOps Ubuntu Server - Interactive Setup Script"
 echo "=========================================================="
 echo " 1) Hostname + SSH Server + 2 Users (devops1, devops2) + Sudo NOPASSWD"
-echo " 2) Firewall UFW (เปิดพอร์ต 22, 80, 443, 53, 3000, 5000, 5050, 8080)"
+echo " 2) Firewall UFW (เปิดพอร์ต 22, 80, 443, 53, 3000, 3306, 5000, 5050, 8080)"
 echo " 3) ติดตั้ง Docker & Docker Compose Plugin แท้ (ลบ podman ออก)"
 echo " 4) โหลด Docker Images จาก Flash Drive (.tar)"
 echo " 5) รัน DNS Server (Bind9 พร้อม ACL พอร์ต 53)"
 echo " 6) รัน Private Docker Registry (พอร์ต 5050)"
 echo " 7) รัน GitLab Server + GitLab Runner"
 echo " 8) ตั้งค่า Domain /etc/hosts (แก้ปัญหาเข้า frontend.mydomain.lab ไม่ได้)"
+echo " 9) รีเซ็ตรหัสผ่าน GitLab root เป็น 'devops' (ความยาว 6 ตัวอักษร)"
+echo " 10) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
 echo "----------------------------------------------------------"
 echo " ตัวอย่างการระบุตัวเลือก:"
-echo "   - พิมพ์ '8'     -> เพื่อเพิ่ม Domain frontend.mydomain.lab ลง /etc/hosts"
-echo "   - พิมพ์ '1,2,8' -> เพื่อทำเฉพาะข้อ 1, 2 และ 8"
-echo "   - พิมพ์ 'all'   -> เพื่อทำทุกข้อตามลำดับ"
+echo "   - พิมพ์ '8'      -> เพื่อเพิ่ม Domain frontend.mydomain.lab ลง /etc/hosts"
+echo "   - พิมพ์ '2,8'    -> เพื่อเปิดพอร์ต Firewall (รวม 3306) และเซ็ต hosts"
+echo "   - พิมพ์ '9'      -> เพื่อเปลี่ยนรหัส GitLab root เป็น devops"
+echo "   - พิมพ์ '10'     -> เพื่อล้าง Docker build cache คืนพื้นที่ดิสก์"
+echo "   - พิมพ์ 'all'    -> เพื่อทำขั้นตอนมาตรฐาน (1 ถึง 8)"
 echo "=========================================================="
-read -p "กรุณาเลือกข้อที่ต้องการทำ (เช่น 8 หรือ 1,2 หรือ all): " USER_CHOICE
+read -p "กรุณาเลือกข้อที่ต้องการทำ: " USER_CHOICE
 
 if [ -z "$USER_CHOICE" ]; then
   echo "ยกเลิกการทำงาน"
@@ -234,11 +271,13 @@ for c in $CHOICES; do
     6) fn_6_local_registry ;;
     7) fn_7_run_gitlab ;;
     8) fn_8_setup_hosts ;;
+    9) fn_9_gitlab_root_password_devops ;;
+    10) fn_10_cleanup_disk_space ;;
     *) echo "ไม่พบตัวเลือก: $c" ;;
   esac
 done
 
 echo ""
 echo "=========================================================="
-echo " ดำเนินการตามตัวเลือกที่ระบุ ($USER_CHOICE) เสร็จสมบูรณ์แล้ว!"
+echo " ดำเนินการตามตัวเลือก ($USER_CHOICE) เสร็จสมบูรณ์แล้ว!"
 echo "=========================================================="
