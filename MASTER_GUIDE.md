@@ -5,7 +5,7 @@
 
 ## สารบัญขั้นตอนการทำงาน
 - [เฟสที่ 0: การเตรียม Flash Drive จากบ้าน (Offline 100%)](#เฟสที่-0-การเตรียม-flash-drive-จากบ้าน-offline-100)
-- [เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server ด้วยคำสั่งเดี่ยว (วันแข่งจริง)](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ด้วยคำสั่งเดี่ยว-วันแข่งจริง)
+- [เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server (เลือกใช้ Script หรือคำสั่งเดี่ยว)](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-เลือกใช้-script-หรือคำสั่งเดี่ยว)
 - [เฟสพิเศษ: การสร้างทางลัด SSH และย้ายไฟล์ผ่าน Windows Desktop](#เฟสพิเศษ-การสร้างทางลัด-ssh-และย้ายไฟล์ผ่าน-windows-desktop)
 - [เฟสที่ 2: การเปิดใช้งาน GitLab & Runner (แบบไม่ต้องต่อเน็ต)](#เฟสที่-2-การเปิดใช้งาน-gitlab--runner-แบบไม่ต้องต่อเน็ต)
 - [เฟสที่ 3: การเขียนโค้ดและส่งงานบนเครื่อง Windows (VS Code)](#เฟสที่-3-การเขียนโค้ดและส่งงานบนเครื่อง-windows-vs-code)
@@ -18,28 +18,61 @@
 *(ทำล่วงหน้าก่อนวันแข่ง เพื่อแก้ปัญหาเน็ตสนามแข่งโหลด GitLab Image 3GB ไม่ทัน)*
 
 - **สถานะ:** ดาวน์โหลดและคัดลอกไฟล์ **`gitlab-all-images.tar` (1.83 GB)** ใส่ลงใน Flash Drive เรียบร้อยแล้ว (มี Image ครบทั้ง 7 ตัว: `gitlab-ce`, `gitlab-runner`, `mysql:8.0`, `registry:2`, `node:20-alpine`, `caddy:alpine`, `ubuntu/bind9:latest`)
-- **วันแข่งจริง:** เพียงพก Flash Drive นี้ไปเสียบเข้าเครื่องแล้วทำตาม [เฟสที่ 1](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ด้วยคำสั่งเดี่ยว-วันแข่งจริง) ได้ทันที
+- **วันแข่งจริง:** เพียงพก Flash Drive นี้ไปเสียบเข้าเครื่องแล้วทำตาม [เฟสที่ 1](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-เลือกใช้-script-หรือคำสั่งเดี่ยว) ได้ทันที
 
 ---
 
-## เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server ด้วยคำสั่งเดี่ยว (วันแข่งจริง)
-*(เกณฑ์ส่วนที่ 2: ตั้งค่าเครือข่ายตามผังระบบเครือข่าย 24 คะแนน - รันคำสั่งทีละบรรทัด ไม่ใช้ Script)*
+## เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server (เลือกใช้ Script หรือคำสั่งเดี่ยว)
+*(เกณฑ์ส่วนที่ 2: ตั้งค่าเครือข่ายตามผังระบบเครือข่าย 24 คะแนน)*
 
-เปิด Terminal ใน Ubuntu (`Ctrl + Alt + T`) แล้วรันคำสั่งตามลำดับ:
+คุณสามารถเลือกวิธีตั้งค่าได้ **2 วิธี**:
 
-### 1.1 ตั้งชื่อเครื่อง (Hostname)
+---
+
+### วิธีที่ A: ใช้สคริปต์โต้ตอบ `setup.sh` (เลือกพิมพ์เลขข้อตามต้องการ)
+ในโฟลเดอร์โปรเจกต์บน Ubuntu ให้สั่ง:
+```bash
+sudo bash setup.sh
+```
+ระบบจะแสดงเมนูตัวเลือกขึ้นมา:
+```text
+==========================================================
+   DevOps Ubuntu Server - Interactive Setup Script
+==========================================================
+ 1) Hostname + SSH Server + 2 Users (devops1, devops2) + Sudo NOPASSWD
+ 2) Firewall UFW (เปิดพอร์ต 22, 80, 443, 53, 3000, 5000, 5050, 8080)
+ 3) ติดตั้ง Docker & Docker Compose Plugin แท้ (ลบ podman ออก)
+ 4) โหลด Docker Images จาก Flash Drive (.tar)
+ 5) รัน DNS Server (Bind9 พร้อม ACL พอร์ต 53)
+ 6) รัน Private Docker Registry (พอร์ต 5050)
+ 7) รัน GitLab Server + GitLab Runner
+----------------------------------------------------------
+ ตัวอย่างการระบุตัวเลือก:
+   - พิมพ์ '3'     -> เพื่อติดตั้ง Docker แก้ไขปัญหา Podman
+   - พิมพ์ '1,2'   -> เพื่อทำเฉพาะข้อ 1 และ 2
+   - พิมพ์ 'all'   -> เพื่อทำทุกข้อตามลำดับ
+==========================================================
+```
+- **ข้อดี:** ไม่ต้องพิมพ์คำสั่งยาวๆ พิมพ์แค่เลขข้อ เช่น `3` หรือ `1,2` หรือ `all` ระบบจะตั้งค่าให้ทันทีและไม่ทำซ้ำในข้อที่ไม่ได้เลือก
+
+---
+
+### วิธีที่ B: รันคำสั่งเดี่ยวทีละบรรทัด (Standalone Commands)
+*(กรณีที่ต้องการพิมพ์คำสั่งเองทีละบรรทัดเพื่อให้เห็นใน Terminal History)*
+
+#### 1.1 ตั้งชื่อเครื่อง (Hostname)
 ```bash
 sudo hostnamectl set-hostname server-devops
 ```
 
-### 1.2 ติดตั้งและเปิดใช้งาน SSH Server
+#### 1.2 ติดตั้งและเปิดใช้งาน SSH Server
 ```bash
 sudo apt update
 sudo apt install -y openssh-server
 sudo systemctl enable --now ssh
 ```
 
-### 1.3 สร้าง 2 User ตามเกณฑ์ (`devops1`, `devops2` รหัสผ่าน: `1234`)
+#### 1.3 สร้าง 2 User ตามเกณฑ์ (`devops1`, `devops2` รหัสผ่าน: `1234`)
 ```bash
 sudo useradd -m -s /bin/bash devops1
 echo "devops1:1234" | sudo chpasswd
@@ -50,13 +83,13 @@ echo "devops2:1234" | sudo chpasswd
 sudo usermod -aG sudo devops2
 ```
 
-### 1.4 ตั้งค่า Sudo NOPASSWD (เข้า `sudo -i` โดยไม่ต้องกรอกรหัสผ่าน)
+#### 1.4 ตั้งค่า Sudo NOPASSWD (เข้า `sudo -i` โดยไม่ต้องกรอกรหัสผ่าน)
 ```bash
 echo "%sudo ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/sudo-nopasswd
 sudo chmod 0440 /etc/sudoers.d/sudo-nopasswd
 ```
 
-### 1.5 เปิด Firewall (UFW) พอร์ตที่ใช้งานตามเกณฑ์
+#### 1.5 เปิด Firewall (UFW) พอร์ตที่ใช้งานตามเกณฑ์
 ```bash
 sudo ufw allow 22/tcp
 sudo ufw allow 80/tcp
@@ -69,8 +102,9 @@ sudo ufw allow 8080/tcp
 sudo ufw --force enable
 ```
 
-### 1.6 ติดตั้ง Docker & Docker Compose
+#### 1.6 ติดตั้ง Docker & Docker Compose แท้ (ลบ Podman ออก)
 ```bash
+sudo apt remove -y podman podman-docker containernetworking-plugins 2>/dev/null || true
 sudo apt install -y docker.io docker-compose-v2
 sudo systemctl enable --now docker
 sudo usermod -aG docker $USER
@@ -78,7 +112,7 @@ sudo usermod -aG docker devops1
 sudo usermod -aG docker devops2
 ```
 
-### 1.7 โหลด Docker Image จาก Flash Drive
+#### 1.7 โหลด Docker Image จาก Flash Drive
 ```bash
 # ตรวจสอบชื่ออุปกรณ์ Flash Drive (เช่น sdb1)
 lsblk
@@ -88,7 +122,7 @@ sudo docker load -i /mnt/usb/gitlab-all-images.tar
 sudo umount /mnt/usb
 ```
 
-### 1.8 รัน Private Docker Registry (พอร์ต 5050)
+#### 1.8 รัน Private Docker Registry (พอร์ต 5050)
 ```bash
 sudo docker run -d --name registry --restart always -p 5050:5000 registry:2
 ```
