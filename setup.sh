@@ -72,6 +72,12 @@ fn_3_docker_install() {
   usermod -aG docker devops1 2>/dev/null || true
   usermod -aG docker devops2 2>/dev/null || true
 
+  # 7. ฝังตัวแปร DOCKER_HOST=/var/run/docker.sock ลงใน Profile ทุก User และลบ podman socket ทิ้งถาวร
+  echo 'export DOCKER_HOST="unix:///var/run/docker.sock"' > /etc/profile.d/docker-host.sh
+  chmod +x /etc/profile.d/docker-host.sh
+  systemctl --user -M devops@ stop podman.socket podman 2>/dev/null || true
+  rm -rf /run/user/*/podman 2>/dev/null || true
+
   echo "ตรวจสอบสถานะ Docker:"
   docker --version
   docker compose version
