@@ -1,13 +1,15 @@
 #!/bin/bash
 # ==============================================================================
 # Interactive Setup Script for Ubuntu Server (DevOps Competition)
-# รองรับการเลือกทำเฉพาะหัวข้อ เช่นพิมพ์ 1,2 หรือ 8 หรือ all
+# รองรับการกดรันแบบ One-Click (Auto All-in-One) หรือเลือกเฉพาะหัวข้อ
 # ==============================================================================
 
 if [ "$EUID" -ne 0 ]; then
   echo "กรุณารันสคริปต์ด้วย sudo: sudo bash $0"
   exit 1
 fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 get_server_ip() {
   local ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}')
@@ -105,9 +107,10 @@ fn_4_load_images() {
     docker load -i "$TAR_FILE"
     echo "--- โหลด Image เรียบร้อย ---"
   else
-    echo "ไม่พบไฟล์ที่ Mount อัตโนมัติ กรุณาระบุ Path หรือจะค้นหาอุปกรณ์ Flash Drive:"
+    echo "ไม่พบไฟล์ที่ Mount อัตโนมัติใน /mnt หรือ /media"
+    echo "รายการบล็อกอุปกรณ์ดิสก์:"
     lsblk
-    echo "ตัวอย่างคำสั่งโหลดเอง: sudo docker load -i /mnt/usb/gitlab-all-images.tar"
+    echo "หากมีไฟล์ .tar ให้สั่งโหลดด้วยคำสั่ง: sudo docker load -i <path-to-file.tar>"
   fi
 }
 
@@ -127,51 +130,8 @@ options {
 };
 EOF
   docker rm -f dns-server 2>/dev/null || true
-  docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest
+  docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest 2>/dev/null || true
   echo "--- เสร็จสิ้นขั้นตอนที่ 5 ---"
-}
-
-fn_6_local_registry() {
-  echo ""
-  echo ">>> [6] รัน Private Docker Registry (พอร์ต 5050)..."
-  docker rm -f local-registry 2>/dev/null || true
-  docker run -d --name local-registry --restart always -p 5050:5000 registry:2
-  echo "--- เสร็จสิ้นขั้นตอนที่ 6 ---"
-}
-
-fn_7_run_gitlab() {
-  echo ""
-  echo ">>> [7] รัน GitLab & GitLab Runner Container..."
-  SERVER_IP=$(get_server_ip)
-  echo "Server IP: $SERVER_IP (เข้าเว็บ: http://${SERVER_IP}:8080)"
-
-  docker rm -f gitlab 2>/dev/null || true
-  docker run -d \
-    --name gitlab \
-    --restart always \
-    --hostname "${SERVER_IP}" \
-    -p 8080:80 \
-    -p 2222:22 \
-    -e GITLAB_OMNIBUS_CONFIG="
-      external_url 'http://${SERVER_IP}:8080';
-      nginx['listen_port'] = 80;
-      nginx['listen_https'] = false;
-      gitlab_rails['initial_root_password'] = 'devops1234';
-    " \
-    -v /srv/gitlab/config:/etc/gitlab \
-    -v /srv/gitlab/logs:/var/log/gitlab \
-    -v /srv/gitlab/data:/var/opt/gitlab \
-    --shm-size 256m \
-    gitlab/gitlab-ce:latest
-
-  docker rm -f gitlab-runner 2>/dev/null || true
-  docker run -d \
-    --name gitlab-runner \
-    --restart always \
-    -v /srv/gitlab-runner/config:/etc/gitlab-runner \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    gitlab/gitlab-runner:latest
-  echo "--- สั่งรัน GitLab และ Runner สำเร็จ (รอประมาณ 2-3 นาทีเพื่อบูตระบบ) ---"
 }
 
 fn_8_setup_hosts() {
@@ -188,31 +148,65 @@ fn_8_setup_hosts() {
     echo -e "${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
   fi
 
-  echo "เพิ่ม mapping ลงใน /etc/hosts เรียบร้อยแล้ว:"
+  echo "เพิ่ม mapping ลงใน /etc/hosts ของ Ubuntu เรียบร้อยแล้ว:"
   grep "mydomain.lab" /etc/hosts
-  echo ""
-  echo ">>> คำแนะนำสำหรับเครื่อง Windows Client (เครื่องที่เปิด Browser):"
-  echo "เปิด PowerShell (Run as Administrator) แล้วรันคำสั่งนี้:"
-  echo "  Add-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab\""
   echo "--- เสร็จสิ้นขั้นตอนที่ 8 ---"
 }
 
-fn_9_gitlab_root_password_devops() {
+fn_run_compose_all() {
   echo ""
-  echo ">>> [9] บังคับรีเซ็ตรหัสผ่าน root ของ GitLab ให้เป็น 'devops' (Bypass 8 chars validation)..."
-  if ! docker ps | grep -q gitlab; then
-    echo "ข้อผิดพลาด: คอนเทนเนอร์ gitlab ยังไม่ได้รัน หรือกำลังบูตอยู่ กรุณารอสักครู่"
-    return 1
+  echo ">>> กำลัง Build และ Start ทุก Services ผ่าน Docker Compose (Caddy, Frontend, App, DB, GitLab)..."
+  cd "$SCRIPT_DIR"
+
+  # ตรวจสอบว่า docker-compose.yml มีอยู่หรือไม่
+  if [ -f "docker-compose.yml" ]; then
+    docker compose up -d --build
+    echo ""
+    echo "สถานะ Containers ล่าสุด:"
+    docker compose ps
+  else
+    echo "ไม่พบไฟล์ docker-compose.yml ใน $SCRIPT_DIR"
   fi
-  echo "กำลังรัน Rails runner เพื่อเปลี่ยนรหัสผ่าน root เป็น devops..."
-  docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root'); user.password = 'devops'; user.password_confirmation = 'devops'; user.save(validate: false)"
-  echo "--- ตั้งรหัสผ่าน root เป็น 'devops' สำเร็จ 100% เรียบร้อย ---"
 }
 
-fn_10_cleanup_disk_space() {
+show_windows_powershell_cmd() {
+  SERVER_IP=$(get_server_ip)
   echo ""
-  echo ">>> [10] ล้างขยะและเคลียร์พื้นที่ดิสก์ (แก้ปัญหา no space left on device)..."
-  echo "กำลังล้างแคช apt, docker builder cache, dangling images, และโฟลเดอร์ชั่วคราว..."
+  echo "================================================================================"
+  echo "  คำสั่งตั้งค่าบนเครื่อง WINDOWS CLIENT (เพื่อเข้าเว็บผ่าน Custom Domain)"
+  echo "================================================================================"
+  echo "เปิด PowerShell บนเครื่อง Windows ด้วยสิทธิ์ 'Run as Administrator' แล้วก๊อปปี้ไปวาง:"
+  echo ""
+  echo -e "\e[1;32mAdd-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab\" -Force\e[0m"
+  echo ""
+  echo "--------------------------------------------------------------------------------"
+  echo "หลังจากรันคำสั่งบน Windows แล้ว สามารถเปิด Browser เข้าใช้งานได้ทันที:"
+  echo "  - Web Frontend (HTTPS):  https://frontend.mydomain.lab"
+  echo "  - Backend API (HTTPS):   https://backend.mydomain.lab/api/users"
+  echo "  - GitLab Server:         http://${SERVER_IP}:8080 (หรือ https://gitlab.mydomain.lab)"
+  echo "  - Database (DBeaver):    Host: ${SERVER_IP}  Port: 3306  User: root  Pass: password"
+  echo "================================================================================"
+  echo ""
+}
+
+fn_auto_all_in_one() {
+  echo ""
+  echo "================================================================================"
+  echo "   เริ่มการติดตั้งแบบครบวงจรในปุ่มเดียว (Auto All-in-One Full Setup)"
+  echo "================================================================================"
+  fn_1_hostname_ssh_users
+  fn_2_firewall
+  fn_3_docker_install
+  fn_4_load_images
+  fn_5_dns_server
+  fn_8_setup_hosts
+  fn_run_compose_all
+  show_windows_powershell_cmd
+}
+
+fn_cleanup_disk_space() {
+  echo ""
+  echo ">>> ล้างขยะและเคลียร์พื้นที่ดิสก์ (แก้ปัญหา no space left on device)..."
   apt-get clean
   docker builder prune -af 2>/dev/null || true
   docker image prune -f 2>/dev/null || true
@@ -226,40 +220,32 @@ fn_10_cleanup_disk_space() {
 # ==============================================================================
 # Interactive Menu
 # ==============================================================================
-echo "=========================================================="
-echo "   DevOps Ubuntu Server - Interactive Setup Script"
-echo "=========================================================="
+echo "================================================================================"
+echo "      DevOps Ubuntu Server - All-in-One Automated Setup Script"
+echo "================================================================================"
+echo " 0) [AUTO] One-Click Full Setup (ทำครบทุกอย่าง + Start Docker + Caddy + ออกคำสั่ง Windows)"
 echo " 1) Hostname + SSH Server + 2 Users (devops1, devops2) + Sudo NOPASSWD"
 echo " 2) Firewall UFW (เปิดพอร์ต 22, 80, 443, 53, 3000, 3306, 5000, 5050, 8080)"
 echo " 3) ติดตั้ง Docker & Docker Compose Plugin แท้ (ลบ podman ออก)"
 echo " 4) โหลด Docker Images จาก Flash Drive (.tar)"
 echo " 5) รัน DNS Server (Bind9 พร้อม ACL พอร์ต 53)"
-echo " 6) รัน Private Docker Registry (พอร์ต 5050)"
-echo " 7) รัน GitLab Server + GitLab Runner"
-echo " 8) ตั้งค่า Domain /etc/hosts (แก้ปัญหาเข้า frontend.mydomain.lab ไม่ได้)"
-echo " 9) รีเซ็ตรหัสผ่าน GitLab root เป็น 'devops' (ความยาว 6 ตัวอักษร)"
-echo " 10) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
-echo "----------------------------------------------------------"
-echo " ตัวอย่างการระบุตัวเลือก:"
-echo "   - พิมพ์ '8'      -> เพื่อเพิ่ม Domain frontend.mydomain.lab ลง /etc/hosts"
-echo "   - พิมพ์ '2,8'    -> เพื่อเปิดพอร์ต Firewall (รวม 3306) และเซ็ต hosts"
-echo "   - พิมพ์ '9'      -> เพื่อเปลี่ยนรหัส GitLab root เป็น devops"
-echo "   - พิมพ์ '10'     -> เพื่อล้าง Docker build cache คืนพื้นที่ดิสก์"
-echo "   - พิมพ์ 'all'    -> เพื่อทำขั้นตอนมาตรฐาน (1 ถึง 8)"
-echo "=========================================================="
-read -p "กรุณาเลือกข้อที่ต้องการทำ: " USER_CHOICE
+echo " 6) Build & Start Docker Compose (Caddy Reverse Proxy, App, Frontend, DB, GitLab)"
+echo " 7) ตั้งค่า Domain /etc/hosts (พร้อมแสดงคำสั่ง PowerShell สำหรับ Windows)"
+echo " 8) แสดงคำสั่ง PowerShell สำหรับเครื่อง Windows อีกครั้ง"
+echo " 9) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
+echo "--------------------------------------------------------------------------------"
+echo " แนะนำ: เลือก '0' สำหรับรันทีเดียวพร้อมใช้งานทันที (One-Click)"
+echo " หรือพิมพ์ตัวเลขเจาะจง เช่น '6,7' หรือ '8'"
+echo "================================================================================"
+read -p "กรุณาเลือกตัวเลือก (กด 0 หรือ Enter เพื่อทำ Full Auto): " USER_CHOICE
 
-if [ -z "$USER_CHOICE" ]; then
-  echo "ยกเลิกการทำงาน"
+if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ] || [ "$USER_CHOICE" = "all" ]; then
+  fn_auto_all_in_one
   exit 0
 fi
 
 # แปลงเป็น array คั่นด้วยจุลภาคหรือเว้นวรรค
 CHOICES=$(echo "$USER_CHOICE" | tr ',' ' ')
-
-if [ "$USER_CHOICE" = "all" ]; then
-  CHOICES="1 2 3 4 5 6 7 8"
-fi
 
 for c in $CHOICES; do
   case $c in
@@ -268,16 +254,15 @@ for c in $CHOICES; do
     3) fn_3_docker_install ;;
     4) fn_4_load_images ;;
     5) fn_5_dns_server ;;
-    6) fn_6_local_registry ;;
-    7) fn_7_run_gitlab ;;
-    8) fn_8_setup_hosts ;;
-    9) fn_9_gitlab_root_password_devops ;;
-    10) fn_10_cleanup_disk_space ;;
+    6) fn_run_compose_all ;;
+    7) fn_8_setup_hosts; show_windows_powershell_cmd ;;
+    8) show_windows_powershell_cmd ;;
+    9) fn_cleanup_disk_space ;;
     *) echo "ไม่พบตัวเลือก: $c" ;;
   esac
 done
 
 echo ""
-echo "=========================================================="
+echo "================================================================================"
 echo " ดำเนินการตามตัวเลือก ($USER_CHOICE) เสร็จสมบูรณ์แล้ว!"
-echo "=========================================================="
+echo "================================================================================"
