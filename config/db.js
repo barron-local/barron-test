@@ -2,10 +2,10 @@ const mysql = require("mysql2/promise")
 
 // 1. ตั้งค่าการเชื่อมต่อฐานข้อมูล MySQL Connection Pool
 const dbConfig = {
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "my_app"
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : "",
+  database: process.env.DB_NAME || "my_app"
 }
 
 const db = mysql.createPool(dbConfig)
