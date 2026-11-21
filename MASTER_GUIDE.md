@@ -5,7 +5,8 @@
 
 ## สารบัญขั้นตอนการทำงาน
 - [เฟสที่ 0: การเตรียม Flash Drive จากบ้าน (Offline 100%)](#เฟสที่-0-การเตรียม-flash-drive-จากบ้าน-offline-100)
-- [เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server ใน VMware (วันแข่งจริง)](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ใน-vmware-วันแข่งจริง)
+- [เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server ด้วยคำสั่งเดี่ยว (วันแข่งจริง)](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ด้วยคำสั่งเดี่ยว-วันแข่งจริง)
+- [เฟสพิเศษ: การสร้างทางลัด SSH และย้ายไฟล์ผ่าน Windows Desktop](#เฟสพิเศษ-การสร้างทางลัด-ssh-และย้ายไฟล์ผ่าน-windows-desktop)
 - [เฟสที่ 2: การเปิดใช้งาน GitLab & Runner (แบบไม่ต้องต่อเน็ต)](#เฟสที่-2-การเปิดใช้งาน-gitlab--runner-แบบไม่ต้องต่อเน็ต)
 - [เฟสที่ 3: การเขียนโค้ดและส่งงานบนเครื่อง Windows (VS Code)](#เฟสที่-3-การเขียนโค้ดและส่งงานบนเครื่อง-windows-vs-code)
 - [เฟสที่ 4: การรันระบบจริงด้วย Docker Compose บน Ubuntu](#เฟสที่-4-การรันระบบจริงด้วย-docker-compose-บน-ubuntu)
@@ -17,45 +18,101 @@
 *(ทำล่วงหน้าก่อนวันแข่ง เพื่อแก้ปัญหาเน็ตสนามแข่งโหลด GitLab Image 3GB ไม่ทัน)*
 
 - **สถานะ:** ดาวน์โหลดและคัดลอกไฟล์ **`gitlab-all-images.tar` (1.83 GB)** ใส่ลงใน Flash Drive เรียบร้อยแล้ว (มี Image ครบทั้ง 7 ตัว: `gitlab-ce`, `gitlab-runner`, `mysql:8.0`, `registry:2`, `node:20-alpine`, `caddy:alpine`, `ubuntu/bind9:latest`)
-- **วันแข่งจริง:** เพียงพก Flash Drive นี้ไปเสียบเข้าเครื่องแล้วทำตาม [เฟสที่ 1](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ใน-vmware-วันแข่งจริง) ได้ทันที
+- **วันแข่งจริง:** เพียงพก Flash Drive นี้ไปเสียบเข้าเครื่องแล้วทำตาม [เฟสที่ 1](#เฟสที่-1-การตั้งค่าระบบบน-ubuntu-server-ด้วยคำสั่งเดี่ยว-วันแข่งจริง) ได้ทันที
 
 ---
 
-## เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server ใน VMware (วันแข่งจริง)
-*(เกณฑ์ส่วนที่ 2: ตั้งค่าเครือข่ายตามผังระบบเครือข่าย 24 คะแนน)*
+## เฟสที่ 1: การตั้งค่าระบบบน Ubuntu Server ด้วยคำสั่งเดี่ยว (วันแข่งจริง)
+*(เกณฑ์ส่วนที่ 2: ตั้งค่าเครือข่ายตามผังระบบเครือข่าย 24 คะแนน - รันคำสั่งทีละบรรทัด ไม่ใช้ Script)*
 
-### 1.1 ติดตั้งระบบอัตโนมัติ (SSH + 2 Users + Sudo Nopasswd + UFW + Docker + DNS + Registry)
-เปิด Terminal ใน Ubuntu (`Ctrl + Alt + T`) แล้วรันคำสั่ง:
+เปิด Terminal ใน Ubuntu (`Ctrl + Alt + T`) แล้วรันคำสั่งตามลำดับ:
+
+### 1.1 ตั้งชื่อเครื่อง (Hostname)
 ```bash
-git clone https://github.com/barron-local/barron-test.git /opt/barron-test
-cd /opt/barron-test
-sudo bash setup.sh
+sudo hostnamectl set-hostname server-devops
 ```
-*สิ่งที่คำสั่งนี้ทำให้โดยอัตโนมัติ:*
-- ตั้งชื่อเครื่อง Hostname `server-devops`
-- เปิดบริการ SSH และสร้าง 2 User (`devops1`, `devops2` รหัสผ่าน: `1234`)
-- ตั้งค่า `sudo -i` ได้โดยไม่ต้องกรอกรหัสผ่าน (NOPASSWD)
-- เปิด Firewall (UFW) พอร์ต 22, 80, 443, 53, 3000, 5000, 5050, 8080
-- ติดตั้ง Docker & Docker Compose Plugin
-- รัน DNS Server (BIND9 บนพอร์ต 53 พร้อมกำหนด ACL IP)
-- รัน Private Docker Registry (พอร์ต 5050)
 
-### 1.2 โหลด Docker Image เข้าเครื่อง (เลือกวิธีใดวิธีหนึ่ง):
-- **แบบที่ 1 (ใช้ Flash Drive - แนะนำ เร็วสุด 30 วินาที):**
-  เสียบ Flash Drive เข้าเครื่อง เลือกเชื่อมต่อกับ Ubuntu แล้วรัน:
-  ```bash
-  # ตรวจสอบชื่ออุปกรณ์ Flash Drive (เช่น /dev/sdb1)
-  lsblk
-  sudo mkdir -p /mnt/usb
-  sudo mount /dev/sdb1 /mnt/usb
-  sudo docker load -i /mnt/usb/gitlab-all-images.tar
-  sudo umount /mnt/usb
-  ```
-- **แบบที่ 2 (ไม่ใช้ Flash Drive - โหลดผ่านเน็ตสนาม):**
-  ```bash
-  sudo docker pull gitlab/gitlab-ce:latest
-  sudo docker pull gitlab/gitlab-runner:latest
-  ```
+### 1.2 ติดตั้งและเปิดใช้งาน SSH Server
+```bash
+sudo apt update
+sudo apt install -y openssh-server
+sudo systemctl enable --now ssh
+```
+
+### 1.3 สร้าง 2 User ตามเกณฑ์ (`devops1`, `devops2` รหัสผ่าน: `1234`)
+```bash
+sudo useradd -m -s /bin/bash devops1
+echo "devops1:1234" | sudo chpasswd
+sudo usermod -aG sudo devops1
+
+sudo useradd -m -s /bin/bash devops2
+echo "devops2:1234" | sudo chpasswd
+sudo usermod -aG sudo devops2
+```
+
+### 1.4 ตั้งค่า Sudo NOPASSWD (เข้า `sudo -i` โดยไม่ต้องกรอกรหัสผ่าน)
+```bash
+echo "%sudo ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/sudo-nopasswd
+sudo chmod 0440 /etc/sudoers.d/sudo-nopasswd
+```
+
+### 1.5 เปิด Firewall (UFW) พอร์ตที่ใช้งานตามเกณฑ์
+```bash
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 53
+sudo ufw allow 3000/tcp
+sudo ufw allow 5000/tcp
+sudo ufw allow 5050/tcp
+sudo ufw allow 8080/tcp
+sudo ufw --force enable
+```
+
+### 1.6 ติดตั้ง Docker & Docker Compose
+```bash
+sudo apt install -y docker.io docker-compose-v2
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+sudo usermod -aG docker devops1
+sudo usermod -aG docker devops2
+```
+
+### 1.7 โหลด Docker Image จาก Flash Drive
+```bash
+# ตรวจสอบชื่ออุปกรณ์ Flash Drive (เช่น sdb1)
+lsblk
+sudo mkdir -p /mnt/usb
+sudo mount /dev/sdb1 /mnt/usb
+sudo docker load -i /mnt/usb/gitlab-all-images.tar
+sudo umount /mnt/usb
+```
+
+### 1.8 รัน Private Docker Registry (พอร์ต 5050)
+```bash
+sudo docker run -d --name registry --restart always -p 5050:5000 registry:2
+```
+
+---
+
+## เฟสพิเศษ: การสร้างทางลัด SSH และย้ายไฟล์ผ่าน Windows Desktop
+
+### 1. สร้างทางลัดคลิกเปิด SSH บน Desktop ของ Windows
+1. คลิกขวาที่หน้าจอ **Desktop** -> เลือก **New (สร้างใหม่)** -> **Shortcut (ทางลัด)**
+2. ในช่องพิมพ์ตำแหน่ง ให้กรอกคำสั่ง:
+   ```text
+   cmd.exe /k ssh devops1@192.168.114.128
+   ```
+   *(เปลี่ยน `192.168.114.128` เป็น IP ของ Ubuntu ที่ได้จากคำสั่ง `hostname -I`)*
+3. ตั้งชื่อไอคอนว่า `Ubuntu SSH` แล้วกด **Finish**
+   *(หลังจากนี้ดับเบิ้ลคลิกไอคอนนี้จะเด้งหน้าต่าง Terminal ควบคุม Ubuntu จากเครื่อง Windows ได้ทันที)*
+
+### 2. ส่งโฟลเดอร์โปรเจกต์จาก Windows ข้ามไป Ubuntu ด้วย SCP คำสั่งเดียว
+เปิด PowerShell หรือ Command Prompt บน Windows แล้วรัน:
+```powershell
+scp -r C:\Users\Woradech\Desktop\barron-test devops1@192.168.114.128:~/
+```
+*(หรือจะเชื่อมต่อผ่านโปรแกรม FileZilla ด้วย Protocol: `SFTP`, Port: `22` เพื่อลากวางไฟล์ก็ได้เช่นกัน)*
 
 ---
 
