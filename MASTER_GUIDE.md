@@ -136,12 +136,18 @@ sudo bash -c 'echo "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.
 ```
 
 **2. บนเครื่อง Windows Client (เครื่องที่เปิด Web Browser):**
-- เปิด **Notepad** ด้วยสิทธิ์ **"Run as Administrator"**
-- ไปที่เมนู File -> Open -> เลือกไฟล์: `C:\Windows\System32\drivers\etc\hosts` *(เลือก All Files *.*)*
-- เพิ่มบรรทัดด้านล่างนี้ลงไปท้ายไฟล์ (แทนที่ IP ด้วย IP จริงของ Ubuntu):
-```text
-192.168.114.128 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab
-```
+- **วิธีที่ 1 (สั่งผ่าน PowerShell ง่ายและเร็วที่สุด):**
+  เปิด PowerShell ด้วยสิทธิ์ *Run as Administrator* แล้วรันคำสั่งบรรทัดเดียว:
+  ```powershell
+  Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "`n192.168.114.128 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab"
+  ```
+- **วิธีที่ 2 (เปิดแก้ด้วย Notepad):**
+  - เปิด **Notepad** ด้วยสิทธิ์ **"Run as Administrator"**
+  - ไปที่เมนู File -> Open -> เลือกไฟล์: `C:\Windows\System32\drivers\etc\hosts` *(เลือก All Files *.*)*
+  - เพิ่มบรรทัดด้านล่างนี้ลงไปท้ายไฟล์ (แทนที่ IP ด้วย IP จริงของ Ubuntu):
+  ```text
+  192.168.114.128 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab
+  ```
 - กด Save บันทึกไฟล์ -> จากนั้นเปิด Browser เข้า `https://frontend.mydomain.lab` หรือ `http://gitlab.mydomain.lab:8080` ได้ทันที!
 *(เนื่องจาก Caddy ใช้ Local Self-signed Cert เมื่อ Browser แจ้งเตือน ให้กด "Advanced" -> "Accept the Risk and Continue")*
 
@@ -306,3 +312,31 @@ sudo docker compose ps
 | **Backend Express API** | พอร์ต `5000` | RESTful API |
 | **Docker Registry** | `http://<IP_UBUNTU>:5050` | Private Image Registry |
 | **DNS Server (BIND9)** | พอร์ต `53` | จัดการ Domain และ ACL |
+| **Database (MySQL)** | พอร์ต `3306` | `root` / `password` (Database: `my_app`) |
+
+---
+
+## ภาคผนวก: การเชื่อมต่อ Database ด้วย DBeaver จาก Windows Client
+
+### 1. วิธีดู IP ของเครื่อง Ubuntu สำหรับเชื่อมต่อ
+หากใช้คำสั่ง `hostname -I` แล้วเจอ IP หลายตัว ให้ใช้คำสั่งระบุ IP หลัก:
+```bash
+ip route get 1.1.1.1 | awk '{print $7}'
+```
+*(หรือดูที่การ์ดแลนหลัก เช่น `ens33` จะได้ IP ที่ตรงกับวงเครือข่ายของ Windows เช่น `192.168.114.128` โดยไม่ต้องนำ IP ของ Docker เช่น `172.17.x.x` หรือ `172.18.x.x` ไปใช้)*
+
+### 2. ข้อมูลการตั้งค่า Connection ใน DBeaver
+- **Database Driver:** MySQL
+- **Host / Server:** `<IP_UBUNTU>` (เช่น `192.168.114.128`)
+- **Port:** `3306`
+- **Database:** `my_app`
+- **Username:** `root`
+- **Password:** `password`
+
+> [!TIP]
+> **การแก้ปัญหา Public Key Retrieval Error ใน DBeaver:**
+> ในหน้าตั้งค่า Connection หากกด **Test Connection** แล้วติดปัญหาเกี่ยวกับ Public Key Retrieval หรือ SSL:
+> 1. ไปที่แท็บ **Driver properties**
+> 2. ค้นหาค่า `allowPublicKeyRetrieval` เปลี่ยนเป็น **`TRUE`**
+> 3. ค้นหาค่า `useSSL` เปลี่ยนเป็น **`FALSE`**
+> 4. กด **Test Connection** อีกครั้ง จะเชื่อมต่อสำเร็จ 100% ทันที
