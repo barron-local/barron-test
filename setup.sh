@@ -205,13 +205,32 @@ show_windows_powershell_cmd() {
 
 fn_reset_gitlab_root() {
   echo ""
-  echo ">>> บังคับตั้งค่า/สร้างบัญชี root ของ GitLab เป็น 'devops1234'..."
+  echo ">>> บังคับตั้งค่า/สร้างบัญชี root และปลดล็อก Namespace ของ GitLab เป็น 'devops1234'..."
   if ! docker ps | grep -q gitlab; then
     echo "ข้อผิดพลาด: คอนเทนเนอร์ gitlab ยังไม่ได้รัน หรือกำลังบูตอยู่"
     return 1
   fi
-  docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true); user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.skip_confirmation! if user.respond_to?(:skip_confirmation!); user.save!(validate: false); puts 'Root user ready!'"
-  echo "--- บัญชี root: devops1234 พร้อมใช้งาน 100% ---"
+  docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/unlock_root.rb
+user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true)
+user.password = 'devops1234'
+user.password_confirmation = 'devops1234'
+user.skip_confirmation! if user.respond_to?(:skip_confirmation!)
+user.save!(validate: false)
+
+unless user.namespace
+  org = Organizations::Organization.default_organization
+  ns = Namespaces::UserNamespace.new(owner: user, path: user.username, name: user.username, organization: org)
+  ns.save!(validate: false)
+end
+
+user.onboarding_in_progress = false if user.respond_to?(:onboarding_in_progress=)
+user.role_and_interests_already_set = true if user.respond_to?(:role_and_interests_already_set=)
+user.save!(validate: false)
+puts 'SUCCESS: GitLab root ready and unlocked 100%!'
+EOF
+gitlab-rails runner /tmp/unlock_root.rb
+"
+  echo "--- บัญชี root: devops1234 พร้อมใช้งาน 100% เรียบร้อย ---"
 }
 
 # ==============================================================================
