@@ -27,8 +27,13 @@ fn_1_hostname_ssh_users() {
   apt update && apt install -y ca-certificates curl gnupg lsb-release openssh-server
   systemctl enable --now ssh
 
-  id -u devops1 &>/dev/null || (adduser devops1 --gecos "" --disabled-password && echo "devops1:1234" | chpasswd && usermod -aG sudo devops1)
-  id -u devops2 &>/dev/null || (adduser devops2 --gecos "" --disabled-password && echo "devops2:1234" | chpasswd && usermod -aG sudo devops2)
+  id -u devops1 &>/dev/null || adduser devops1 --gecos "" --disabled-password
+  echo "devops1:1234" | chpasswd --crypt-method SHA512
+  usermod -aG sudo devops1
+
+  id -u devops2 &>/dev/null || adduser devops2 --gecos "" --disabled-password
+  echo "devops2:1234" | chpasswd --crypt-method SHA512
+  usermod -aG sudo devops2
 
   echo -e "devops1 ALL=(ALL) NOPASSWD:ALL\ndevops2 ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/devops-nopasswd
   chmod 0440 /etc/sudoers.d/devops-nopasswd
