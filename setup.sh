@@ -42,19 +42,40 @@ fn_2_firewall() {
 
 fn_3_docker_install() {
   echo ""
-  echo ">>> [3] ติดตั้ง Docker & Docker Compose Plugin แท้..."
-  # ป้องกันปัญหา Podman แทรกแซง
-  apt remove -y podman podman-docker containernetworking-plugins 2>/dev/null || true
+  echo ">>> [3] ตรวจสอบและแก้ไขปัญหา Podman แทรกแซง + ติดตั้ง Docker แท้ 100%..."
 
-  apt install -y docker.io docker-compose-v2
-  systemctl enable --now docker
+  # 1. ปิด service และ socket ของ podman ทันที
+  systemctl stop podman.socket podman 2>/dev/null || true
+  systemctl disable podman.socket podman 2>/dev/null || true
 
-  # เพิ่มสิทธิ์ให้ user
+  # 2. ถอน Podman และตัว alias ทั้งหมดทิ้งอย่างหมดจด
+  apt-get purge -y podman podman-docker containernetworking-plugins 2>/dev/null || true
+  apt-get autoremove -y 2>/dev/null || true
+
+  # 3. ลบ alias หรือ wrapper ของ docker ที่ชี้ไปหา podman ใน PATH
+  rm -f /usr/bin/podman-docker /usr/local/bin/docker /etc/containers/nodocker 2>/dev/null || true
+
+  # 4. ติดตั้ง Docker Engine และ Docker Compose v2 แท้
+  echo "กำลังติดตั้ง Docker Engine และ Docker Compose v2..."
+  apt-get update
+  apt-get install -y docker.io docker-compose-v2
+
+  # 5. เปิด Service ของ Docker Daemon จริง
+  systemctl unmask docker.service 2>/dev/null || true
+  systemctl unmask docker.socket 2>/dev/null || true
+  systemctl enable --now docker.service
+  systemctl restart docker.service
+
+  # 6. เพิ่มสิทธิ์กลุ่ม docker ให้ user ทั้งหมด
   [ -n "$SUDO_USER" ] && usermod -aG docker "$SUDO_USER" 2>/dev/null || true
+  usermod -aG docker devops 2>/dev/null || true
   usermod -aG docker devops1 2>/dev/null || true
   usermod -aG docker devops2 2>/dev/null || true
-  usermod -aG docker devops 2>/dev/null || true
-  echo "--- เสร็จสิ้นขั้นตอนที่ 3 (Docker ติดตั้งและเริ่มทำงานแล้ว) ---"
+
+  echo "ตรวจสอบสถานะ Docker:"
+  docker --version
+  docker compose version
+  echo "--- เสร็จสิ้นขั้นตอนที่ 3 (ลบ Podman เรียบร้อย สลับมาใช้ Docker แท้ 100%) ---"
 }
 
 fn_4_load_images() {
