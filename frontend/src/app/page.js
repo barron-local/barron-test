@@ -3,7 +3,19 @@ import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
   const getApiUrl = (path) => {
-    if (typeof window !== 'undefined') return `http://${window.location.hostname}:5000${path}`;
+    if (typeof window !== 'undefined') {
+      const proto = window.location.protocol;
+      const host = window.location.hostname;
+      // ถ้าเปิดผ่านโดเมน https://frontend.mydomain.lab ให้ยิงไปที่ https://backend.mydomain.lab
+      if (host.includes('frontend.')) {
+        return `${proto}//${host.replace('frontend.', 'backend.')}${path}`;
+      }
+      // ถ้าเปิดผ่าน IP หรือชื่ออื่น
+      if (proto === 'https:') {
+        return `${proto}//${host}${path}`;
+      }
+      return `${proto}//${host}:5000${path}`;
+    }
     return `http://localhost:5000${path}`;
   };
 
