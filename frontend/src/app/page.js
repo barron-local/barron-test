@@ -33,8 +33,7 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('readonly');
 
-  // State สำหรับกล่องแยกอัปโหลดไฟล์ (Admin และ Editonly)
-  const [uploadUserId, setUploadUserId] = useState('');
+  // State สำหรับกล่องแยกอัปโหลดไฟล์ (Admin และ Editonly แนบให้ตนเอง)
   const [standaloneFile, setStandaloneFile] = useState(null);
   const standaloneFileInputRef = useRef(null);
 
@@ -194,15 +193,10 @@ export default function Home() {
     }
   };
 
-  // 5.1 ฟังก์ชันแยกสำหรับอัปโหลดและแนบไฟล์ (เฉพาะ Admin และ Editonly)
+  // 5.1 ฟังก์ชันแยกสำหรับอัปโหลดและแนบไฟล์ให้บัญชีตนเอง (เฉพาะ Admin และ Editonly)
   const handleStandaloneUpload = async (e) => {
     e.preventDefault();
 
-    const targetId = uploadUserId || user.id;
-    if (!targetId) {
-      notify('กรุณาเลือกผู้ใช้ที่ต้องการแนบไฟล์', true);
-      return;
-    }
     if (!standaloneFile) {
       notify('กรุณาเลือกไฟล์ที่ต้องการอัปโหลด', true);
       return;
@@ -212,7 +206,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', standaloneFile);
 
-      const res = await fetch(getApiUrl(`/api/users/${targetId}/upload`), {
+      const res = await fetch(getApiUrl(`/api/users/${user.id}/upload`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${user.token}` },
         body: formData
@@ -222,7 +216,7 @@ export default function Home() {
       if (res.ok) {
         setStandaloneFile(null);
         if (standaloneFileInputRef.current) standaloneFileInputRef.current.value = '';
-        notify('อัปโหลดและแนบไฟล์ข้อมูลสำเร็จ');
+        notify('อัปโหลดและแนบไฟล์ข้อมูลเข้าสู่บัญชีของคุณสำเร็จ');
         fetchUsers();
       } else {
         notify(handleBackendError(res.status, data.message), true);
@@ -385,23 +379,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* 2. กล่องแยกอัปโหลดและแนบไฟล์ข้อมูล (เฉพาะ Admin และ Editonly) */}
+        {/* 2. กล่องแยกอัปโหลดและแนบไฟล์ข้อมูล (เฉพาะ Admin และ Editonly - แนบเข้าบัญชีตนเอง) */}
         {canEdit && (
           <div className="admin-create-box" style={{ marginTop: '1rem' }}>
-            <h4 className="admin-create-title">อัปโหลดและแนบไฟล์ข้อมูล</h4>
+            <h4 className="admin-create-title">อัปโหลดและแนบไฟล์ข้อมูล (แนบเข้าบัญชี: {user?.username})</h4>
             <form onSubmit={handleStandaloneUpload} className="form-row">
-              <select
-                value={uploadUserId}
-                onChange={e => setUploadUserId(e.target.value)}
-                required
-              >
-                <option value="">-- เลือกผู้ใช้ที่ต้องการแนบไฟล์ --</option>
-                {users.map(u => (
-                  <option key={u.id} value={u.id}>
-                    {u.username} (ID: {u.id}, Role: {u.role})
-                  </option>
-                ))}
-              </select>
               <div>
                 <input
                   type="file"
