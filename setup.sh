@@ -411,15 +411,16 @@ fn_auto_push_gitlab_branches() {
       NET_NAME=$(docker network ls --format '{{.Name}}' | grep -E 'default|test' | head -n 1)
       [ -z "$NET_NAME" ] && NET_NAME="barron-test_default"
       
+      HOST_IP=$(get_server_ip)
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
-        --url "http://gitlab/" \
+        --url "http://gitlab.mydomain.lab:8080/" \
         --token "$USER_RUNNER_TOKEN" \
         --executor "docker" \
         --docker-image "docker:latest" \
         --docker-privileged \
         --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
-        --docker-network-mode "$NET_NAME" \
+        --docker-extra-hosts "gitlab.mydomain.lab:${HOST_IP}" \
         --description "devops-runner" &>/dev/null || true
       docker restart gitlab-runner &>/dev/null || true
     fi
