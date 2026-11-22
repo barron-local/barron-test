@@ -389,22 +389,11 @@ fn_auto_push_gitlab_branches() {
   git add . &>/dev/null || true
   git commit -m "chore: finalize release build" &>/dev/null || true
 
-  # ปลดล็อก Protected Branch บน GitLab เพื่อให้สามารถ push หรือ force push branch main ได้
-  if docker ps 2>/dev/null | grep -q gitlab; then
-    docker exec -i gitlab gitlab-rails runner "
-ProtectedBranch.destroy_all
-Project.all.each do |p|
-  p.protected_branches.destroy_all rescue nil
-end
-" &>/dev/null || true
-  elif which gitlab-rails &>/dev/null; then
-    gitlab-rails runner "
-ProtectedBranch.destroy_all
-Project.all.each do |p|
-  p.protected_branches.destroy_all rescue nil
-end
-" &>/dev/null || true
-  fi
+  # ปลดล็อก Protected Branch บน GitLab ผ่าน API อย่างรวดเร็ว (1 วินาที) เพื่อให้ force push main ได้
+  PROJECT_PATH=$(echo "$GITLAB_URL" | sed 's#^http://[^/]\+/##g' | sed 's#^https://[^/]\+/##g' | sed 's#\.git$##g')
+  ENCODED_PATH=$(echo "$PROJECT_PATH" | sed 's#/#%2F#g')
+  curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
+  curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://localhost:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
 
   git remote add gitlab "$AUTH_URL" &>/dev/null || true
 
