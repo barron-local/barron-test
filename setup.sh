@@ -351,6 +351,14 @@ fn_auto_push_gitlab_branches() {
   cd "$SCRIPT_DIR"
   git config http.sslVerify false
 
+  # Ensure GitLab Web service is ready before proceeding
+  echo "[*] Checking if GitLab Web service is ready..."
+  while ! curl -s -k -f "http://127.0.0.1:8080/users/sign_in" &>/dev/null; do
+    echo "[*] Waiting for GitLab Rails to finish booting..."
+    sleep 4
+  done
+  echo "[✓] GitLab is ready!"
+
   # Auto-create project on GitLab via API if it does not exist
   PROJECT_PATH=$(echo "$GITLAB_URL" | sed 's#^http://[^/]\+/##g' | sed 's#^https://[^/]\+/##g' | sed 's#\.git$##g')
   NAMESPACE_NAME=$(echo "$PROJECT_PATH" | cut -d'/' -f1)
@@ -370,6 +378,7 @@ fn_auto_push_gitlab_branches() {
         -H "Content-Type: application/json" \
         -d "{\"name\": \"${PROJECT_NAME}\", \"path\": \"${PROJECT_NAME}\", \"visibility\": \"public\", \"initialize_with_readme\": false}" &>/dev/null || true
     fi
+    echo "[✓] Project created on GitLab!"
   fi
 
   # ปลดล็อก Protected Branch บน GitLab ผ่าน API อย่างรวดเร็ว เพื่อให้ push main ได้
@@ -456,7 +465,7 @@ fn_auto_push_gitlab_branches() {
         --description "docker-runner"
 
       echo "[*] Activating runner & configuring untagged jobs..."
-      docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false;" &>/dev/null || true
+      docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET active = true, run_untagged = true WHERE run_untagged = false OR active = false;" &>/dev/null || true
 
       echo "[*] Restarting gitlab-runner service..."
       docker restart gitlab-runner &>/dev/null || true
