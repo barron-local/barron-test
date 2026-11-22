@@ -35,7 +35,7 @@ sudo ufw status
 ip a
 docker --version
 docker compose version
-cd ~/Desktop/barron-test
+cd ~/Desktop/devops-tnk 2>/dev/null || cd ~/Desktop/barron-test 2>/dev/null || true
 cat /etc/hosts
 sudo nano /etc/hosts
 cat Caddyfile
@@ -448,7 +448,8 @@ fn_auto_push_gitlab_branches() {
       rm -f ./runner/config.toml &>/dev/null || true
 
       NETWORK_NAME=$(docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
-      [ -z "$NETWORK_NAME" ] && NETWORK_NAME="barron-test_default"
+      [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$SCRIPT_DIR")_default"
+      [ -z "$NETWORK_NAME" ] && NETWORK_NAME="devops-tnk_default"
 
       echo "[*] Connecting runner to GitLab via http://gitlab/ ..."
       docker exec -i gitlab-runner gitlab-runner register \

@@ -168,7 +168,7 @@ sudo bash -c 'echo "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.
 ### 2. ส่งโฟลเดอร์โปรเจกต์จาก Windows ข้ามไป Ubuntu ด้วย SCP คำสั่งเดียว
 เปิด PowerShell หรือ Command Prompt บน Windows แล้วรัน:
 ```powershell
-scp -r C:\Users\Woradech\Desktop\barron-test devops1@192.168.114.128:~/
+scp -r C:\Users\Woradech\Desktop\devops-tnk devops1@192.168.114.128:~/
 ```
 *(หรือจะเชื่อมต่อผ่านโปรแกรม FileZilla ด้วย Protocol: `SFTP`, Port: `22` เพื่อลากวางไฟล์ก็ได้เช่นกัน)*
 
@@ -226,7 +226,7 @@ sudo docker run -d \
    > docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true); user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.skip_confirmation! if user.respond_to?(:skip_confirmation!); user.save!(validate: false); puts 'Root user ready!'"
    > ```
 3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops1234`)
-4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `barron-test`
+4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `devops-tnk`
 5. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> ก๊อปปี้ Registration Token มาวางในคำสั่งด้านล่าง:
    ```bash
    sudo docker exec -it gitlab-runner gitlab-runner register \
@@ -254,7 +254,7 @@ sudo docker run -d \
 เปิด Terminal ใน VS Code บน Windows แล้วสั่ง:
 ```bash
 git init
-git remote add origin http://<IP_UBUNTU>:8080/root/barron-test.git
+git remote add origin http://<IP_UBUNTU>:8080/root/devops-tnk.git
 git add .
 git commit -m "feat: complete application with backend, frontend and devops"
 git branch -M main
@@ -269,7 +269,7 @@ git push -u origin main
 
 ใน Terminal ของ Ubuntu ให้สั่งรันโปรเจกต์:
 ```bash
-cd /opt/barron-test
+cd /opt/devops-tnk 2>/dev/null || cd /opt/barron-test
 sudo docker compose up -d --build
 ```
 ตรวจสอบความพร้อม:
