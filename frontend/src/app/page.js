@@ -44,12 +44,13 @@ export default function Home() {
 
   // 2. ฟังก์ชันจัดการข้อความแจ้งเตือน และแปลง Error Code จาก Backend
   const handleBackendError = (statusCode, backendMessage) => {
-    if (statusCode === 400) return backendMessage || 'ข้อมูลที่ส่งไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
-    if (statusCode === 401) return 'กรุณาเข้าสู่ระบบก่อนทำรายการ หรือ Token หมดอายุ';
+    if (backendMessage) return backendMessage;
+    if (statusCode === 400) return 'ข้อมูลที่ส่งไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
+    if (statusCode === 401) return 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือ Token หมดอายุ';
     if (statusCode === 403) return 'คุณไม่มีสิทธิ์ในการทำรายการนี้ (Permission Denied)';
     if (statusCode === 404) return 'ไม่พบข้อมูลที่ต้องการในระบบ';
     if (statusCode === 500) return 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง';
-    return backendMessage || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
+    return 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ';
   };
 
   const notify = (text, isError = false) => {
