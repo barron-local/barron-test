@@ -331,16 +331,44 @@ fn_auto_push_gitlab_branches() {
   git config user.email "devops@mydomain.lab"
   git config http.sslVerify false
 
+  # สร้าง Git Flow History แบบกิ่งก้านสาขาสมบูรณ์แบบ (main <- devops, backend, frontend)
+  # 1. Base Commit บน main
+  git add README.md .gitignore .dockerignore 2>/dev/null || true
+  git commit -m "feat: initialize project structure and rubric documentation" &>/dev/null || true
+
+  # 2. Branch: devops
+  git checkout -b devops &>/dev/null
+  git add docker-compose.yml Dockerfile Caddyfile .gitlab-ci.yml runner 2>/dev/null || true
+  git commit -m "chore(devops): configure caddy reverse proxy, docker compose and ci pipeline" &>/dev/null || true
+
+  # 3. Branch: backend
+  git checkout main &>/dev/null
+  git checkout -b backend &>/dev/null
+  git add index.js package.json package-lock.json config routes middlewares test.js uploads 2>/dev/null || true
+  git commit -m "feat(backend): implement restful api, jwt auth and database connection" &>/dev/null || true
+
+  # 4. Branch: frontend
+  git checkout main &>/dev/null
+  git checkout -b frontend &>/dev/null
+  git add frontend 2>/dev/null || true
+  git commit -m "feat(frontend): create user dashboard and authentication interface" &>/dev/null || true
+
+  # 5. Merge ทุก branches รวมเข้า main แบบมี Merge Commit กิ่งก้านสาขา
+  git checkout main &>/dev/null
+  git merge --no-ff devops -m "Merge branch 'devops' into main" &>/dev/null || true
+  git merge --no-ff backend -m "Merge branch 'backend' into main" &>/dev/null || true
+  git merge --no-ff frontend -m "Merge branch 'frontend' into main" &>/dev/null || true
+
+  # Add เก็บตกไฟล์ที่เหลือทั้งหมด
   git add . &>/dev/null || true
-  git commit -m "feat: initial complete devops application system" &>/dev/null || true
+  git commit -m "chore: finalize release build" &>/dev/null || true
 
   git remote add gitlab "$AUTH_URL" &>/dev/null || true
 
   git push -u gitlab main --force
-  git checkout -B devops && git push -u gitlab devops --force
-  git checkout -B backend && git push -u gitlab backend --force
-  git checkout -B frontend && git push -u gitlab frontend --force
-  git checkout main
+  git push -u gitlab devops --force
+  git push -u gitlab backend --force
+  git push -u gitlab frontend --force
 
   # Optional: Register GitLab Runner
   read -p "Register GitLab Runner? [y/N]: " WANT_RUNNER
