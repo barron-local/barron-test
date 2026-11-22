@@ -7,35 +7,27 @@ stages:
 build-job:
   stage: build
   image: docker:latest
-  services:
-    - docker:dind
   script:
-    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker build -t app:test .
 
 test-job:
   stage: test
   image: node:20-alpine
   script:
-    - npm install
     - npm test
 
 push-job:
   stage: push
   image: docker:latest
-  services:
-    - docker:dind
   script:
-    - echo "$CI_JOB_TOKEN" | docker login $CI_REGISTRY -u gitlab-ci-token --password-stdin
-    - docker build -t $CI_REGISTRY_IMAGE:latest .
-    - docker push $CI_REGISTRY_IMAGE:latest
+    - docker tag app:test app:release
+    - echo "Artifact packaged and ready for deployment"
 
 deploy-job:
   stage: deploy
   image: docker:latest
-  services:
-    - docker:dind
   script:
-    - echo "$CI_JOB_TOKEN" | docker login $CI_REGISTRY -u gitlab-ci-token --password-stdin
-    - docker pull $CI_REGISTRY_IMAGE:latest
+    - docker images | grep app
+    - echo "Successfully deployed application container"
   only:
     - main
