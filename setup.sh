@@ -414,7 +414,8 @@ end
   # Optional: Register GitLab Runner
   read -p "Register GitLab Runner? [y/N]: " WANT_RUNNER
   if [ "$WANT_RUNNER" = "y" ] || [ "$WANT_RUNNER" = "Y" ]; then
-    read -p "Runner Token (from Settings > CI/CD > Runners) [Enter to skip]: " USER_RUNNER_TOKEN
+    echo "Tip: On GitLab Web UI, please check [x] 'Run untagged jobs' before creating runner"
+    read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
     if [ -n "$USER_RUNNER_TOKEN" ]; then
       NET_NAME=$(docker network ls --format '{{.Name}}' | grep -E 'default|test' | head -n 1)
       [ -z "$NET_NAME" ] && NET_NAME="barron-test_default"
