@@ -159,6 +159,31 @@ EOF
     docker compose ps
   fi
 
+  # ตรวจสอบว่ามี GitLab รันอยู่หรือไม่ (ทั้งแบบ docker exec หรือ omnibus ในเครื่อง) แล้ว auto-reset root ทันที
+  if docker ps 2>/dev/null | grep -q gitlab; then
+    docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/unlock_root.rb
+user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true)
+user.password = 'devops1234'
+user.password_confirmation = 'devops1234'
+user.skip_confirmation! if user.respond_to?(:skip_confirmation!)
+user.save!(validate: false)
+
+unless user.namespace
+  org = Organizations::Organization.default_organization
+  ns = Namespaces::UserNamespace.new(owner: user, path: user.username, name: user.username, organization: org)
+  ns.save!(validate: false)
+end
+
+user.onboarding_in_progress = false if user.respond_to?(:onboarding_in_progress=)
+user.role_and_interests_already_set = true if user.respond_to?(:role_and_interests_already_set=)
+user.save!(validate: false)
+EOF
+gitlab-rails runner /tmp/unlock_root.rb &>/dev/null
+" &>/dev/null || true
+  elif which gitlab-rails &>/dev/null; then
+    gitlab-rails runner "user = User.find_by_username('root'); if user; user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.save!(validate: false); end" &>/dev/null || true
+  fi
+
   show_windows_powershell_cmd
 }
 
