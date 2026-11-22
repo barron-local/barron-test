@@ -19,6 +19,12 @@ services:
     container_name: app
     ports:
       - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
       DB_HOST: db
       DB_USER: root
@@ -35,6 +41,11 @@ services:
       MYSQL_DATABASE: my_app
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   gitlab:
     image: gitlab/gitlab-ce:latest
