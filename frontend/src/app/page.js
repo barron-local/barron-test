@@ -289,8 +289,7 @@ export default function Home() {
   if (!user) {
     return (
       <div className="login-box card">
-        <h2 className="login-title">เข้าสู่ระบบ (Login - Verified by Antigravity)</h2>
-        <p style={{ textAlign: "center", color: "#10b981", fontWeight: "bold", fontSize: "15px", margin: "4px 0 16px 0" }}>⚡ ระบบทดสอบ CI/CD Auto-Deploy สำเร็จ 100% (Build Verified) 🚀</p>
+        <h2 className="login-title">เข้าสู่ระบบ (Login)</h2>
         {msg.text && (
           <div className={msg.isError ? "alert-error" : "alert-success"}>
             {msg.text}
