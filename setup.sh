@@ -75,6 +75,30 @@ get_server_ip() {
 
 fn_quick_docker_caddy() {
   clear
+
+  # ตรวจสอบว่ามี Docker และ Docker Compose หรือไม่ ถ้ายังไม่มี ให้ติดตั้งให้อัตโนมัติทันที
+  if ! which docker &>/dev/null || ! docker compose version &>/dev/null; then
+    systemctl stop podman.socket podman 2>/dev/null || true
+    systemctl disable podman.socket podman 2>/dev/null || true
+    apt-get purge -y podman podman-docker containernetworking-plugins 2>/dev/null || true
+    apt-get autoremove -y 2>/dev/null || true
+    rm -f /usr/bin/podman-docker /usr/local/bin/docker /etc/containers/nodocker 2>/dev/null || true
+
+    apt-get update &>/dev/null || true
+    apt-get install -y docker.io docker-compose-v2 &>/dev/null || true
+    systemctl unmask docker.service docker.socket 2>/dev/null || true
+    systemctl enable --now docker.service &>/dev/null || true
+    systemctl restart docker.service &>/dev/null || true
+
+    [ -n "$SUDO_USER" ] && usermod -aG docker "$SUDO_USER" 2>/dev/null || true
+    usermod -aG docker devops 2>/dev/null || true
+
+    echo 'export DOCKER_HOST="unix:///var/run/docker.sock"' > /etc/profile.d/docker-host.sh
+    chmod +x /etc/profile.d/docker-host.sh
+    systemctl --user -M devops@ stop podman.socket podman 2>/dev/null || true
+    rm -rf /run/user/*/podman 2>/dev/null || true
+  fi
+
   SERVER_IP=$(get_server_ip)
   sed -i '/mydomain.lab/d' /etc/hosts
   echo -e "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
