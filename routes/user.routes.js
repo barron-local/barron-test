@@ -176,8 +176,8 @@ router.post('/', [auth, adminOnly], async (req, res) => {
   }
 })
 
-// 4. อัปโหลดและแนบไฟล์ข้อมูลให้กับผู้ใช้งาน พร้อมลบไฟล์เก่าออกจากระบบ
-router.post('/:id/upload', [auth, upload.single('file')], async (req, res) => {
+// 4. อัปโหลดและแนบไฟล์ข้อมูลให้กับผู้ใช้งาน พร้อมลบไฟล์เก่าออกจากระบบ (เฉพาะ Admin และ Editonly)
+router.post('/:id/upload', [auth, canEdit, upload.single('file')], async (req, res) => {
   try {
     const { id } = req.params
 

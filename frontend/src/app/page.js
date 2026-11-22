@@ -32,8 +32,11 @@ export default function Home() {
   const [newName, setNewName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('readonly');
-  const [newFile, setNewFile] = useState(null);
-  const newFileInputRef = useRef(null);
+
+  // State สำหรับกล่องแยกอัปโหลดไฟล์ (Admin และ Editonly)
+  const [uploadUserId, setUploadUserId] = useState('');
+  const [standaloneFile, setStandaloneFile] = useState(null);
+  const standaloneFileInputRef = useRef(null);
 
   const [editId, setEditId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -150,7 +153,7 @@ export default function Home() {
     }
   };
 
-  // 5. ฟังก์ชันเพิ่มผู้ใช้ใหม่พร้อมแนบไฟล์ข้อมูล (เฉพาะ Admin)
+  // 5. ฟังก์ชันเพิ่มผู้ใช้ใหม่ (เฉพาะ Admin)
   const handleCreate = async (e) => {
     e.preventDefault();
 
@@ -179,29 +182,53 @@ export default function Home() {
       const data = await res.json();
 
       if (res.ok) {
-        const createdId = data.id || data.data?.id;
-
-        if (newFile && createdId) {
-          const formData = new FormData();
-          formData.append('file', newFile);
-          await fetch(getApiUrl(`/api/users/${createdId}/upload`), {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${user.token}` },
-            body: formData
-          });
-        }
-
         setNewName('');
         setNewPassword('');
-        setNewFile(null);
-        if (newFileInputRef.current) newFileInputRef.current.value = '';
-        notify('บันทึกข้อมูลและแนบไฟล์สำเร็จ');
+        notify('เพิ่มผู้ใช้ใหม่สำเร็จ');
         fetchUsers();
       } else {
         notify(handleBackendError(res.status, data.message), true);
       }
     } catch (err) {
       notify('เกิดข้อผิดพลาดในการบันทึกข้อมูล', true);
+    }
+  };
+
+  // 5.1 ฟังก์ชันแยกสำหรับอัปโหลดและแนบไฟล์ (เฉพาะ Admin และ Editonly)
+  const handleStandaloneUpload = async (e) => {
+    e.preventDefault();
+
+    const targetId = uploadUserId || user.id;
+    if (!targetId) {
+      notify('กรุณาเลือกผู้ใช้ที่ต้องการแนบไฟล์', true);
+      return;
+    }
+    if (!standaloneFile) {
+      notify('กรุณาเลือกไฟล์ที่ต้องการอัปโหลด', true);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', standaloneFile);
+
+      const res = await fetch(getApiUrl(`/api/users/${targetId}/upload`), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+        body: formData
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setStandaloneFile(null);
+        if (standaloneFileInputRef.current) standaloneFileInputRef.current.value = '';
+        notify('อัปโหลดและแนบไฟล์ข้อมูลสำเร็จ');
+        fetchUsers();
+      } else {
+        notify(handleBackendError(res.status, data.message), true);
+      }
+    } catch (err) {
+      notify('เกิดข้อผิดพลาดในการอัปโหลดไฟล์', true);
     }
   };
 
@@ -328,10 +355,10 @@ export default function Home() {
           </div>
         )}
 
-        {/* ฟอร์มเพิ่มผู้ใช้ใหม่พร้อมแนบไฟล์ (เฉพาะ Admin) */}
+        {/* 1. กล่องเพิ่มผู้ใช้ใหม่ (เฉพาะ Admin) */}
         {isAdmin && (
           <div className="admin-create-box">
-            <h4 className="admin-create-title">เพิ่มผู้ใช้ใหม่พร้อมแนบไฟล์ข้อมูล</h4>
+            <h4 className="admin-create-title">เพิ่มผู้ใช้ใหม่</h4>
             <form onSubmit={handleCreate} className="form-row">
               <input
                 placeholder="ชื่อผู้ใช้ (Username)"
@@ -351,15 +378,40 @@ export default function Home() {
                 <option value="editonly">editonly (แก้ไขได้)</option>
                 <option value="admin">admin (ผู้ดูแลระบบ)</option>
               </select>
+              <button type="submit" className="btn-success">
+                บันทึกผู้ใช้
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* 2. กล่องแยกอัปโหลดและแนบไฟล์ข้อมูล (เฉพาะ Admin และ Editonly) */}
+        {canEdit && (
+          <div className="admin-create-box" style={{ marginTop: '1rem' }}>
+            <h4 className="admin-create-title">อัปโหลดและแนบไฟล์ข้อมูล</h4>
+            <form onSubmit={handleStandaloneUpload} className="form-row">
+              <select
+                value={uploadUserId}
+                onChange={e => setUploadUserId(e.target.value)}
+                required
+              >
+                <option value="">-- เลือกผู้ใช้ที่ต้องการแนบไฟล์ --</option>
+                {users.map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.username} (ID: {u.id}, Role: {u.role})
+                  </option>
+                ))}
+              </select>
               <div>
                 <input
                   type="file"
-                  ref={newFileInputRef}
-                  onChange={e => setNewFile(e.target.files[0])}
+                  ref={standaloneFileInputRef}
+                  onChange={e => setStandaloneFile(e.target.files[0])}
+                  required
                 />
               </div>
-              <button type="submit" className="btn-success">
-                บันทึกข้อมูล
+              <button type="submit" className="btn-primary">
+                อัปโหลดไฟล์
               </button>
             </form>
           </div>
