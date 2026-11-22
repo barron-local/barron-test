@@ -233,6 +233,61 @@ gitlab-rails runner /tmp/unlock_root.rb
   echo "--- บัญชี root: devops1234 พร้อมใช้งาน 100% เรียบร้อย ---"
 }
 
+fn_auto_push_gitlab_branches() {
+  echo ""
+  echo "================================================================================"
+  echo ">>> อัตโนมัติ Push โค้ดขึ้น GitLab + สร้าง 3 Branches (backend, frontend, devops)"
+  echo "================================================================================"
+  
+  read -p "กรุณาระบุ URL ของ GitLab Repository (เช่น https://gitlab.mydomain.lab/tnk/devops-tnk.git): " GITLAB_URL
+  if [ -z "$GITLAB_URL" ]; then
+    echo "ยกเลิก: ไม่ได้ระบุ URL"
+    return 1
+  fi
+
+  read -p "Username GitLab (เช่น root หรือ devops) [default: root]: " GIT_USER
+  [ -z "$GIT_USER" ] && GIT_USER="root"
+
+  read -s -p "Password GitLab [default: devops1234]: " GIT_PASS
+  echo ""
+  [ -z "$GIT_PASS" ] && GIT_PASS="devops1234"
+
+  # แปลง URL ให้ฝัง Auth เพื่อไม่ต้องพิมพ์รหัสซ้ำ
+  AUTH_URL=$(echo "$GITLAB_URL" | sed "s#https://#https://${GIT_USER}:${GIT_PASS}@#g" | sed "s#http://#http://${GIT_USER}:${GIT_PASS}@#g")
+
+  cd "$SCRIPT_DIR"
+  git config http.sslVerify false
+
+  echo "กำลังเพิ่ม Remote และ Push Branch 'main'..."
+  git remote remove gitlab 2>/dev/null || true
+  git remote add gitlab "$AUTH_URL"
+
+  git push -u gitlab main --force
+  if [ $? -ne 0 ]; then
+    echo "ข้อผิดพลาด: ไม่สามารถ Push ไปยัง GitLab ได้ กรุณาตรวจสอบ URL หรือรหัสผ่าน"
+    return 1
+  fi
+
+  echo "กำลังสร้างและ Push Branch 'devops'..."
+  git checkout -B devops && git push -u gitlab devops --force
+
+  echo "กำลังสร้างและ Push Branch 'backend'..."
+  git checkout -B backend && git push -u gitlab backend --force
+
+  echo "กำลังสร้างและ Push Branch 'frontend'..."
+  git checkout -B frontend && git push -u gitlab frontend --force
+
+  git checkout main
+  echo ""
+  echo "================================================================================"
+  echo "   Push โค้ดและสร้าง Branch ครบ 4 Branches สำเร็จเรียบร้อย 100%!"
+  echo "   - main     (Production Branch)"
+  echo "   - devops   (เกณฑ์ข้อ 4.6.19)"
+  echo "   - backend  (เกณฑ์ข้อ 4.6.19)"
+  echo "   - frontend (เกณฑ์ข้อ 4.6.19)"
+  echo "================================================================================"
+}
+
 # ==============================================================================
 # Interactive Menu
 # ==============================================================================
@@ -245,9 +300,10 @@ echo " 2) ติดตั้ง Docker Engine & Compose แท้ (ลบ podman
 echo " 3) โหลด Docker Images จาก Flash Drive (.tar)"
 echo " 4) แสดงคำสั่ง PowerShell สำหรับตั้งค่า hosts บนเครื่อง Windows"
 echo " 5) บังคับรีเซ็ต/สร้างบัญชี GitLab root เป็น 'devops1234'"
-echo " 6) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
+echo " 6) [AUTO] Push โค้ดขึ้น GitLab + สร้าง 3 Branches (backend, frontend, devops)"
+echo " 7) เคลียร์ขยะและเพิ่มพื้นที่ว่างบนดิสก์ (แก้ปัญหา no space left on device)"
 echo "--------------------------------------------------------------------------------"
-echo " แนะนำ: กด 0 หรือ Enter เพื่อรัน Docker + Caddy Proxy ทันทีโดยไม่ต้องตั้งค่า User ซ้ำซ้อน"
+echo " แนะนำ: กด 0 เพื่อรันระบบทั้งหมด หรือเลือก 6 เพื่อส่งโค้ดขึ้น GitLab ทันที"
 echo "================================================================================"
 read -p "กรุณาเลือกตัวเลือก (กด 0 หรือ Enter เพื่อรัน Quick Deploy): " USER_CHOICE
 
@@ -262,6 +318,7 @@ case $USER_CHOICE in
   3) fn_load_images ;;
   4) show_windows_powershell_cmd ;;
   5) fn_reset_gitlab_root ;;
-  6) fn_cleanup_disk_space ;;
+  6) fn_auto_push_gitlab_branches ;;
+  7) fn_cleanup_disk_space ;;
   *) echo "ไม่พบตัวเลือก: $USER_CHOICE" ;;
 esac
