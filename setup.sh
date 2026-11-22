@@ -399,10 +399,11 @@ fn_auto_push_gitlab_branches() {
 
   git remote add gitlab "$AUTH_URL" &>/dev/null || true
 
-  git push -u gitlab main --force
+  # Push sub-branches first, then push main last so Pipeline on main runs as latest
   git push -u gitlab devops --force
   git push -u gitlab backend --force
   git push -u gitlab frontend --force
+  git push -u gitlab main --force
 
   # Optional: Register GitLab Runner
   read -p "Register GitLab Runner? [y/N]: " WANT_RUNNER
