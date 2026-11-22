@@ -79,7 +79,7 @@ export default function Home() {
         setUsers(list);
       } else {
         if (res.status === 401) {
-          handleLogout();
+          handleLogout(true);
         } else {
           notify(handleBackendError(res.status, resData.message), true);
         }
@@ -135,7 +135,11 @@ export default function Home() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (skipConfirm = false) => {
+    if (!skipConfirm && typeof window !== 'undefined') {
+      const isConfirmed = window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?');
+      if (!isConfirmed) return;
+    }
     try {
       if (user?.token) {
         await fetch(getApiUrl('/api/logout'), {
