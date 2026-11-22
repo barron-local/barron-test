@@ -3,5 +3,4 @@ node_modules/
 project.zip
 uploads/
 *.exe
-barron-devops-guide-extension/
 *.vsix
