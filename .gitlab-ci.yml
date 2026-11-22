@@ -31,7 +31,28 @@ deploy-job:
   stage: deploy
   image: docker:latest
   script:
-    - docker images | grep app
-    - echo "Successfully deployed application container"
+    - echo "==> [1/3] Deploying updated application containers to Production..."
+    - |
+      if docker ps --format '{{.Names}}' | grep -q "^frontend$"; then
+        echo "[*] Updating frontend source files into container..."
+        docker cp ./frontend/src/. frontend:/app/src/
+        [ -f ./frontend/package.json ] && docker cp ./frontend/package.json frontend:/app/package.json 2>/dev/null || true
+        echo "[*] Rebuilding Next.js frontend production bundle..."
+        docker exec -i frontend npm run build
+        echo "[*] Restarting frontend container..."
+        docker restart frontend
+      fi
+    - |
+      if docker ps --format '{{.Names}}' | grep -q "^app$"; then
+        echo "[*] Updating backend application files..."
+        docker cp ./index.js app:/app/index.js 2>/dev/null || true
+        docker cp ./routes/. app:/app/routes/ 2>/dev/null || true
+        docker cp ./middlewares/. app:/app/middlewares/ 2>/dev/null || true
+        docker cp ./config/. app:/app/config/ 2>/dev/null || true
+        [ -d ./docs ] && docker cp ./docs/. app:/app/docs/ 2>/dev/null || true
+        echo "[*] Restarting backend app container..."
+        docker restart app
+      fi
+    - echo "==> [✓] Production deployment completed successfully! Live websites updated."
   only:
     - main

@@ -289,7 +289,7 @@ export default function Home() {
   if (!user) {
     return (
       <div className="login-box card">
-        <h2 className="login-title">เข้าสู่ระบบ (Login)</h2>
+        <h2 className="login-title">เข้าสู่ระบบ (Login - Production v2.0)</h2>
         {msg.text && (
           <div className={msg.isError ? "alert-error" : "alert-success"}>
             {msg.text}
