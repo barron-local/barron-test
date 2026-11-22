@@ -1,5 +1,6 @@
 {
     local_certs
+    auto_https disable_redirects
 }
 
 http://backend.mydomain.lab, https://backend.mydomain.lab {

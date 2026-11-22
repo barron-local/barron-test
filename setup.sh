@@ -426,7 +426,8 @@ fn_auto_push_gitlab_branches() {
   git add . &>/dev/null || true
   git commit -m "chore: finalize release build" &>/dev/null || true
 
-  git remote add gitlab "$AUTH_URL" &>/dev/null || true
+  git remote remove gitlab 2>/dev/null || true
+  git remote add gitlab "$AUTH_URL"
 
   # Push sub-branches first, then push main last so Pipeline on main runs as latest
   git push -u gitlab devops --force
