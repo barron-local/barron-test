@@ -136,7 +136,7 @@ export default function Home() {
   };
 
   const handleLogout = async (skipConfirm = false) => {
-    if (!skipConfirm && typeof window !== 'undefined') {
+    if (skipConfirm !== true && typeof window !== 'undefined') {
       const isConfirmed = window.confirm('คุณต้องการออกจากระบบใช่หรือไม่?');
       if (!isConfirmed) return;
     }
@@ -342,7 +342,7 @@ export default function Home() {
               ระดับสิทธิ์: <b className={isAdmin ? 'role-admin' : (canEdit ? 'role-editonly' : 'role-readonly')}>{user.role}</b>
             </small>
           </div>
-          <button onClick={handleLogout} className="btn-danger">
+          <button onClick={() => handleLogout(false)} className="btn-danger">
             ออกจากระบบ (Logout)
           </button>
         </div>
