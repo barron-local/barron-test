@@ -351,8 +351,34 @@ fn_auto_push_gitlab_branches() {
   cd "$SCRIPT_DIR"
   git config http.sslVerify false
 
-  # ลบประวัติ git เดิม และลบไฟล์ตัวช่วย/ไกด์ทั้งหมด เพื่อให้เหลือเฉพาะโปรเจกต์แข่งจริง 100%
-  rm -rf .git barron-devops-guide-extension *.vsix setup.sh check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md 2>/dev/null || true
+  # Auto-create project on GitLab via API if it does not exist
+  PROJECT_PATH=$(echo "$GITLAB_URL" | sed 's#^http://[^/]\+/##g' | sed 's#^https://[^/]\+/##g' | sed 's#\.git$##g')
+  NAMESPACE_NAME=$(echo "$PROJECT_PATH" | cut -d'/' -f1)
+  PROJECT_NAME=$(echo "$PROJECT_PATH" | cut -d'/' -f2)
+  ENCODED_PATH=$(echo "$PROJECT_PATH" | sed 's#/#%2F#g')
+
+  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects/${ENCODED_PATH}")
+  if [ "$HTTP_STATUS" = "404" ]; then
+    echo "[*] Creating project ${PROJECT_PATH} on GitLab..."
+    NS_ID=$(curl -s -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/namespaces?search=${NAMESPACE_NAME}" | grep -o '"id":[0-9]*' | head -n 1 | cut -d':' -f2)
+    if [ -n "$NS_ID" ]; then
+      curl -s -X POST -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\": \"${PROJECT_NAME}\", \"path\": \"${PROJECT_NAME}\", \"namespace_id\": ${NS_ID}, \"visibility\": \"public\", \"initialize_with_readme\": false}" &>/dev/null || true
+    else
+      curl -s -X POST -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\": \"${PROJECT_NAME}\", \"path\": \"${PROJECT_NAME}\", \"visibility\": \"public\", \"initialize_with_readme\": false}" &>/dev/null || true
+    fi
+  fi
+
+  # ปลดล็อก Protected Branch บน GitLab ผ่าน API อย่างรวดเร็ว เพื่อให้ push main ได้
+  curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
+  curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://localhost:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
+
+  # ลบประวัติ git เดิม และล้างไฟล์ที่ไม่เกี่ยวข้อง โดยยังคงเก็บ setup.sh ไว้ใช้งานได้ตลอดเวลา
+  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md 2>/dev/null || true
+  grep -qxF "setup.sh" .gitignore 2>/dev/null || echo "setup.sh" >> .gitignore
 
   git init -b main &>/dev/null || git init &>/dev/null
   git config user.name "devops"
@@ -391,12 +417,6 @@ fn_auto_push_gitlab_branches() {
   git add . &>/dev/null || true
   git commit -m "chore: finalize release build" &>/dev/null || true
 
-  # ปลดล็อก Protected Branch บน GitLab ผ่าน API อย่างรวดเร็ว (1 วินาที) เพื่อให้ force push main ได้
-  PROJECT_PATH=$(echo "$GITLAB_URL" | sed 's#^http://[^/]\+/##g' | sed 's#^https://[^/]\+/##g' | sed 's#\.git$##g')
-  ENCODED_PATH=$(echo "$PROJECT_PATH" | sed 's#/#%2F#g')
-  curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
-  curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://localhost:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
-
   git remote add gitlab "$AUTH_URL" &>/dev/null || true
 
   # Push sub-branches first, then push main last so Pipeline on main runs as latest
@@ -411,11 +431,16 @@ fn_auto_push_gitlab_branches() {
     echo "Tip: On GitLab Web UI, please check [x] 'Run untagged jobs' before creating runner"
     read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
     if [ -n "$USER_RUNNER_TOKEN" ]; then
-      echo "Registering GitLab Runner..."
-      # รีเซ็ตคอนเทนเนอร์ Runner ให้สะอาด เพื่อให้ mount โฟลเดอร์ได้ถูกต้อง
+      START_TIME=$(date +%s)
+      echo "==> Registering GitLab Runner with token: $USER_RUNNER_TOKEN"
       docker compose up -d --force-recreate gitlab-runner &>/dev/null || true
+      docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
+      rm -f ./runner/config.toml &>/dev/null || true
 
-      # รันคำสั่งลงทะเบียนโดยตรง (เร็วใน 1 วินาที และเสถียร 100%)
+      NETWORK_NAME=$(docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+      [ -z "$NETWORK_NAME" ] && NETWORK_NAME="barron-test_default"
+
+      echo "[*] Connecting runner to GitLab via http://gitlab/ ..."
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
         --url "http://gitlab/" \
@@ -425,13 +450,20 @@ fn_auto_push_gitlab_branches() {
         --docker-privileged \
         --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
         --docker-volumes "/cache" \
-        --docker-network-mode "barron-test_default" \
+        --docker-network-mode "$NETWORK_NAME" \
         --docker-pull-policy "if-not-present" \
         --clone-url "http://gitlab/" \
         --description "docker-runner"
 
+      echo "[*] Activating runner & configuring untagged jobs..."
+      docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false;" &>/dev/null || true
+
+      echo "[*] Restarting gitlab-runner service..."
       docker restart gitlab-runner &>/dev/null || true
-      echo "[DONE] GitLab Runner registered and ready"
+
+      END_TIME=$(date +%s)
+      ELAPSED=$((END_TIME - START_TIME))
+      echo "==> [✓] GitLab Runner successfully registered and online in ${ELAPSED} seconds!"
     fi
   fi
 }
