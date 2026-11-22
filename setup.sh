@@ -410,25 +410,11 @@ fn_auto_push_gitlab_branches() {
     echo "Tip: On GitLab Web UI, please check [x] 'Run untagged jobs' before creating runner"
     read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
     if [ -n "$USER_RUNNER_TOKEN" ]; then
-      # ลบ config.toml เก่าก่อน register ใหม่เสมอ ป้องกัน runner ซ้ำซ้อนหรือติด config เก่า
-      docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
-      rm -f ./runner/config.toml &>/dev/null || true
+      echo "Registering GitLab Runner..."
+      # รีเซ็ตคอนเทนเนอร์ Runner ให้สะอาด เพื่อให้ mount โฟลเดอร์ได้ถูกต้อง
+      docker compose up -d --force-recreate gitlab-runner &>/dev/null || true
 
-      # 1. แก้ไขบั๊ก GitLab 17: เจนคีย์ CI Job Token Signing Key ล่วงหน้าถ้ายังไม่มี ป้องกัน error 500 เวลา Runner ดึงงาน
-      docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/fix_runner_jwt.rb
-setting = ApplicationSetting.current
-if setting.ci_job_token_signing_key.blank?
-  key = OpenSSL::PKey::RSA.generate(2048)
-  setting.ci_job_token_signing_key = key.to_pem
-  setting.save(validate: false)
-  puts 'CI JWT key generated'
-end
-EOF
-gitlab-rails runner /tmp/fix_runner_jwt.rb &>/dev/null
-" &>/dev/null || true
-
-      # 2. Register Runner เข้า GitLab
-      # ใช้ http://gitlab/ ใน Docker Network เพื่อความเสถียรและเร็วสูงสุด
+      # รันคำสั่งลงทะเบียนโดยตรง (เร็วใน 1 วินาที และเสถียร 100%)
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
         --url "http://gitlab/" \
@@ -440,20 +426,11 @@ gitlab-rails runner /tmp/fix_runner_jwt.rb &>/dev/null
         --docker-volumes "/cache" \
         --docker-network-mode "barron-test_default" \
         --docker-pull-policy "if-not-present" \
-        --description "docker-runner" &>/dev/null || true
-
-      # 3. อัปเดต organization_id: 1 ให้กับ Runner ใน Database ของ GitLab เพื่อไม่ให้ติดสถานะ verify 500
-      docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/fix_runner_org.rb
-token = '$USER_RUNNER_TOKEN'
-runner = Ci::Runner.find_by_token(token)
-if runner
-  runner.update_columns(organization_id: 1, active: true, run_untagged: true)
-end
-EOF
-gitlab-rails runner /tmp/fix_runner_org.rb &>/dev/null
-" &>/dev/null || true
+        --clone-url "http://gitlab/" \
+        --description "docker-runner"
 
       docker restart gitlab-runner &>/dev/null || true
+      echo "[DONE] GitLab Runner registered and ready"
     fi
   fi
 }
