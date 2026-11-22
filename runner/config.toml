@@ -1,29 +1,19 @@
-concurrent = 1
+﻿concurrent = 4
 check_interval = 0
-shutdown_timeout = 0
 
 [session_server]
   session_timeout = 1800
 
 [[runners]]
   name = "docker-runner"
-  url = "https://gitlab.com"
-  token = "glrt-UWNZKkweRhh7MXfhWSdmwGM6MQpvOjEKcDoxZ2dnc2sKdDozCnU6cTFvNnEc.01.1o13xg1op"
+  url = "http://gitlab/"
+  token = "glrt-Ksu0WdPPtrtvN7xxsP7sGm86MQpwOjUKdDozCnU6MQ8.01.171wqpzya"
   executor = "docker"
-  [runners.cache]
-    MaxUploadedArchiveSize = 0
-    [runners.cache.s3]
-      AssumeRoleMaxConcurrency = 0
-    [runners.cache.gcs]
-    [runners.cache.azure]
+  clone_url = "http://gitlab/"
   [runners.docker]
     tls_verify = false
     image = "docker:latest"
     privileged = true
-    disable_entrypoint_overwrite = false
-    oom_kill_disable = false
-    disable_cache = false
-    volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache"]
-    volume_keep = false
-    shm_size = 0
-    network_mtu = 0
+    volumes = ["/cache", "/var/run/docker.sock:/var/run/docker.sock"]
+    pull_policy = ["if-not-present"]
+    network_mode = "barron-test_default"
