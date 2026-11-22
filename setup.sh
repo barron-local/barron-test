@@ -429,11 +429,11 @@ fn_auto_push_gitlab_branches() {
   git remote remove gitlab 2>/dev/null || true
   git remote add gitlab "$AUTH_URL"
 
-  # Push sub-branches first, then push main last so Pipeline on main runs as latest
+  # Push main first so GitLab sets main as the default branch for the repository
+  git push -u gitlab main --force
   git push -u gitlab devops --force
   git push -u gitlab backend --force
   git push -u gitlab frontend --force
-  git push -u gitlab main --force
 
   # Optional: Register GitLab Runner
   read -p "Register GitLab Runner? [y/N]: " WANT_RUNNER
