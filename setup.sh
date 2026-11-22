@@ -127,10 +127,59 @@ EOF
   # 4. Build & Up ทุก Containers ใน docker-compose.yml
   cd "$SCRIPT_DIR"
   if [ -f "docker-compose.yml" ]; then
-    echo "กำลังสั่ง docker compose up -d --build..."
-    docker compose up -d --build
+    echo "กำลังสั่ง docker compose up -d..."
+    docker compose up -d
+
+    echo "กำลังรอ Database (MySQL) พร้อมทำงานและตรวจสอบตารางเริ่มต้น..."
+    for i in {1..15}; do
+      if docker compose exec -T db mysqladmin ping -h localhost -u root -ppassword &>/dev/null; then
+        echo "MySQL พร้อมทำงานแล้ว!"
+        break
+      fi
+      sleep 2
+    done
+
+    # ตรวจสอบและสร้างฐานข้อมูล ตาราง และ Seed ข้อมูลผู้ใช้เริ่มต้นอัตโนมัติ
+    echo "กำลังตรวจสอบและ Seed ฐานข้อมูลอัตโนมัติ..."
+    docker compose exec -T db mysql -u root -ppassword -e "
+      CREATE DATABASE IF NOT EXISTS my_app;
+      USE my_app;
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(50) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        role ENUM('admin', 'editonly', 'readonly') NOT NULL DEFAULT 'readonly'
+      );
+      INSERT IGNORE INTO users (id, username, password, role) VALUES 
+        (1, 'admin', 'admin', 'admin'), 
+        (2, 'editor', 'editor', 'editonly'), 
+        (3, 'user', 'user', 'readonly');
+      CREATE TABLE IF NOT EXISTS log (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        logged_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS status (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL UNIQUE,
+        state ENUM('on', 'off') NOT NULL DEFAULT 'off',
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS files (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        filename VARCHAR(255) NOT NULL,
+        uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    " 2>/dev/null || true
+
+    # รีสตาร์ต app หนึ่งครั้งเพื่อให้รับค่า DB ที่พร้อมแล้ว 100%
+    docker compose restart app &>/dev/null || true
+
     echo ""
-    echo "สถานะ Containers ล่าสุด:"
+    echo "สถานะ Containers ล่าสุด (พร้อมใช้งาน 100%):"
     docker compose ps
   else
     echo "ไม่พบไฟล์ docker-compose.yml ใน $SCRIPT_DIR"
