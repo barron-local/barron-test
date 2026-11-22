@@ -392,14 +392,16 @@ fn_auto_push_gitlab_branches() {
   # ปลดล็อก Protected Branch บน GitLab เพื่อให้สามารถ push หรือ force push branch main ได้
   if docker ps 2>/dev/null | grep -q gitlab; then
     docker exec -i gitlab gitlab-rails runner "
+ProtectedBranch.destroy_all
 Project.all.each do |p|
-  p.protected_branches.destroy_all
+  p.protected_branches.destroy_all rescue nil
 end
 " &>/dev/null || true
   elif which gitlab-rails &>/dev/null; then
     gitlab-rails runner "
+ProtectedBranch.destroy_all
 Project.all.each do |p|
-  p.protected_branches.destroy_all
+  p.protected_branches.destroy_all rescue nil
 end
 " &>/dev/null || true
   fi
