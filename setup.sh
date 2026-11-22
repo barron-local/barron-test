@@ -251,7 +251,7 @@ fn_cleanup_disk_space() {
 show_windows_powershell_cmd() {
   SERVER_IP=$(get_server_ip)
   echo ""
-  echo "Add-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab\" -Force"
+  echo "Add-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab\" -Force"
   echo ""
 }
 
