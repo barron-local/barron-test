@@ -396,7 +396,7 @@ fn_auto_push_gitlab_branches() {
 
   # สร้าง Git Flow History แบบกิ่งก้านสาขาสมบูรณ์แบบ (main <- devops, backend, frontend)
   # 1. Base Commit บน main
-  git add README.md .gitignore .dockerignore 2>/dev/null || true
+  git add README.md .gitignore .dockerignore .gitlab-ci.yml 2>/dev/null || true
   git commit -m "feat: initialize project structure and rubric documentation" &>/dev/null || true
 
   # 2. Branch: devops
