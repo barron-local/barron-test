@@ -12,9 +12,9 @@ build-job:
 
 test-job:
   stage: test
-  image: node:20-alpine
+  image: docker:latest
   script:
-    - npm test
+    - docker run --rm app:test npm test
 
 push-job:
   stage: push
