@@ -407,7 +407,7 @@ fn_auto_push_gitlab_branches() {
   # 3. Branch: backend
   git checkout main &>/dev/null
   git checkout -b backend &>/dev/null
-  git add index.js package.json package-lock.json config routes middlewares test.js uploads 2>/dev/null || true
+  git add index.js package.json package-lock.json config routes middlewares test.js uploads docs 2>/dev/null || true
   git commit -m "feat(backend): implement restful api, jwt auth and database connection" &>/dev/null || true
 
   # 4. Branch: frontend
