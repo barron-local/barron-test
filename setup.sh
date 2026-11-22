@@ -258,6 +258,12 @@ fn_auto_push_gitlab_branches() {
   cd "$SCRIPT_DIR"
   git config http.sslVerify false
 
+  # ทำความสะอาดประวัติ Git ก่อน Push ขึ้น GitLab เพื่อไม่ให้หลงเหลือไฟล์ Extension หรือ VSIX
+  rm -rf barron-devops-guide-extension *.vsix 2>/dev/null || true
+  git rm -r --cached barron-devops-guide-extension *.vsix 2>/dev/null || true
+  git add -A
+  git commit -m "feat: complete devops system implementation" 2>/dev/null || true
+
   echo "กำลังเพิ่ม Remote และ Push Branch 'main'..."
   git remote remove gitlab 2>/dev/null || true
   git remote add gitlab "$AUTH_URL"
