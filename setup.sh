@@ -341,6 +341,44 @@ fn_auto_push_gitlab_branches() {
   git checkout -B backend && git push -u gitlab backend --force
   git checkout -B frontend && git push -u gitlab frontend --force
   git checkout main
+
+  # Auto register GitLab Runner ถ้ามี container gitlab & gitlab-runner รันอยู่
+  if docker ps 2>/dev/null | grep -q gitlab-runner; then
+    docker exec -i gitlab bash -c "gitlab-rails runner \"
+token = Gitlab::CurrentSettings.current_application_settings.runners_registration_token
+File.write('/tmp/runner_token.txt', token) if token
+\" 2>/dev/null" 2>/dev/null || true
+
+    RUNNER_TOKEN=$(docker exec -i gitlab cat /tmp/runner_token.txt 2>/dev/null || true)
+    if [ -n "$RUNNER_TOKEN" ]; then
+      docker exec -i gitlab-runner gitlab-runner register \
+        --non-interactive \
+        --url "http://gitlab.mydomain.lab:8080/" \
+        --registration-token "$RUNNER_TOKEN" \
+        --executor "docker" \
+        --docker-image "docker:latest" \
+        --docker-privileged \
+        --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
+        --description "devops-auto-runner" \
+        --tag-list "docker" \
+        --run-untagged="true" \
+        --locked="false" &>/dev/null || true
+      docker restart gitlab-runner &>/dev/null || true
+    fi
+  elif which gitlab-runner &>/dev/null; then
+    TOKEN=$(gitlab-rails runner "puts Gitlab::CurrentSettings.current_application_settings.runners_registration_token" 2>/dev/null || true)
+    if [ -n "$TOKEN" ]; then
+      gitlab-runner register \
+        --non-interactive \
+        --url "http://gitlab.mydomain.lab:8080/" \
+        --registration-token "$TOKEN" \
+        --executor "shell" \
+        --description "devops-auto-runner" \
+        --run-untagged="true" \
+        --locked="false" &>/dev/null || true
+      systemctl restart gitlab-runner &>/dev/null || true
+    fi
+  fi
 }
 
 clear
