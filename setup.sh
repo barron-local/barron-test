@@ -10,6 +10,18 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+cleanup_all_history() {
+  # ล้างประวัติของทั้ง user ปัจจุบัน, root และ SUDO_USER ทั้งหมด
+  history -c 2>/dev/null || true
+  history -w 2>/dev/null || true
+  rm -f /root/.bash_history ~/.bash_history 2>/dev/null || true
+  if [ -n "$SUDO_USER" ]; then
+    USER_HOME=$(eval echo "~$SUDO_USER")
+    rm -f "$USER_HOME/.bash_history" 2>/dev/null || true
+  fi
+}
+trap cleanup_all_history EXIT
+
 get_server_ip() {
   local ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}')
   if [ -z "$ip" ]; then
