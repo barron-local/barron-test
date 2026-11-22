@@ -135,6 +135,8 @@ EOF
 
   cd "$SCRIPT_DIR"
   if [ -f "docker-compose.yml" ]; then
+    # ล้าง runner config เก่าที่อาจจะค้างจากการลงทะเบียนรอบก่อนๆ เพื่อให้ register ใหม่ได้เสมอ
+    rm -f ./runner/config.toml &>/dev/null || true
     docker compose up -d
 
     for i in {1..15}; do
@@ -408,9 +410,10 @@ fn_auto_push_gitlab_branches() {
     echo "Tip: On GitLab Web UI, please check [x] 'Run untagged jobs' before creating runner"
     read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
     if [ -n "$USER_RUNNER_TOKEN" ]; then
-      NET_NAME=$(docker network ls --format '{{.Name}}' | grep -E 'default|test' | head -n 1)
-      [ -z "$NET_NAME" ] && NET_NAME="barron-test_default"
-      
+      # ลบ config.toml เก่าก่อน register ใหม่เสมอ ป้องกัน runner ซ้ำซ้อนหรือติด config เก่า
+      docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
+      rm -f ./runner/config.toml &>/dev/null || true
+
       HOST_IP=$(get_server_ip)
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
