@@ -414,17 +414,45 @@ fn_auto_push_gitlab_branches() {
       docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
       rm -f ./runner/config.toml &>/dev/null || true
 
-      HOST_IP=$(get_server_ip)
+      # 1. แก้ไขบั๊ก GitLab 17: เจนคีย์ CI Job Token Signing Key ล่วงหน้าถ้ายังไม่มี ป้องกัน error 500 เวลา Runner ดึงงาน
+      docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/fix_runner_jwt.rb
+setting = ApplicationSetting.current
+if setting.ci_job_token_signing_key.blank?
+  key = OpenSSL::PKey::RSA.generate(2048)
+  setting.ci_job_token_signing_key = key.to_pem
+  setting.save(validate: false)
+  puts 'CI JWT key generated'
+end
+EOF
+gitlab-rails runner /tmp/fix_runner_jwt.rb &>/dev/null
+" &>/dev/null || true
+
+      # 2. Register Runner เข้า GitLab
+      # ใช้ http://gitlab/ ใน Docker Network เพื่อความเสถียรและเร็วสูงสุด
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
-        --url "http://gitlab.mydomain.lab:8080/" \
+        --url "http://gitlab/" \
         --token "$USER_RUNNER_TOKEN" \
         --executor "docker" \
         --docker-image "docker:latest" \
         --docker-privileged \
         --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
-        --docker-extra-hosts "gitlab.mydomain.lab:${HOST_IP}" \
-        --description "devops-runner" &>/dev/null || true
+        --docker-volumes "/cache" \
+        --docker-network-mode "barron-test_default" \
+        --docker-pull-policy "if-not-present" \
+        --description "docker-runner" &>/dev/null || true
+
+      # 3. อัปเดต organization_id: 1 ให้กับ Runner ใน Database ของ GitLab เพื่อไม่ให้ติดสถานะ verify 500
+      docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/fix_runner_org.rb
+token = '$USER_RUNNER_TOKEN'
+runner = Ci::Runner.find_by_token(token)
+if runner
+  runner.update_columns(organization_id: 1, active: true, run_untagged: true)
+end
+EOF
+gitlab-rails runner /tmp/fix_runner_org.rb &>/dev/null
+" &>/dev/null || true
+
       docker restart gitlab-runner &>/dev/null || true
     fi
   fi
