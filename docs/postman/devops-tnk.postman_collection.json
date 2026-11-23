@@ -1,0 +1,1013 @@
+{
+  "info": {
+    "_postman_id": "a8f6d3b1-devops-tnk-collection-v2",
+    "name": "DevOps TNK - RESTful API Test Suite (ตามใบประเมินแข่งขันทักษะ ปวส.)",
+    "description": "ชุดทดสอบ API ครบตามเกณฑ์การให้คะแนนใบประเมิน DevOps ปวส. (ข้อ 4.4 และ 4.5)\nรองรับการยิงทดสอบคะแนนครบทุกข้อ: GET, POST, PUT, PATCH, DELETE, File Upload, JWT Auth, Status 401/403/404/409, Query/Path Params",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://backend.mydomain.lab",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "editor_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "new_user_id",
+      "value": "4",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01. เข้าสู่ระบบ & ความปลอดภัย (เกณฑ์ 4.5.4, 4.5.10)",
+      "description": "ทดสอบ API Login ออก JWT Token พร้อมลายเซ็น (Signing) และการออกจากระบบ",
+      "item": [
+        {
+          "name": "1.1 Login ด้วย Admin (บันทึก Token อัตโนมัติ)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: เข้าสู่ระบบสำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response มีสถานะ success และได้รับ JWT Token', function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql('success');",
+                  "    pm.expect(jsonData.token).to.be.a('string');",
+                  "    pm.environment.set('token', jsonData.token);",
+                  "    pm.environment.set('admin_token', jsonData.token);",
+                  "    pm.collectionVariables.set('token', jsonData.token);",
+                  "    pm.collectionVariables.set('admin_token', jsonData.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.4: เรียก API Login ด้วย username/password แล้วได้รับ JWT Token สำหรับใช้ยืนยันตัวตน"
+          }
+        },
+        {
+          "name": "1.2 Login ด้วย Editor (สิทธิ์ editonly)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('editor_token', jsonData.token);",
+                  "pm.collectionVariables.set('editor_token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"editor\",\n  \"password\": \"editor\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 Login ด้วย User ทั่วไป (สิทธิ์ readonly)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.environment.set('user_token', jsonData.token);",
+                  "pm.collectionVariables.set('user_token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user\",\n  \"password\": \"user\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.4 Login ผิดรหัส (เกณฑ์ 4.5.5: Exception 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 401: ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrongpass123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.5 ดูข้อมูลผู้ใช้ปัจจุบัน (GET /api/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: ดึงข้อมูลส่วนตัวสำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.6 ออกจากระบบ (POST /api/logout)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: ออกจากระบบสำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. ดึงข้อมูล GET Requests (เกณฑ์ 4.5.1, 4.5.6)",
+      "description": "ทดสอบ API GET รองรับ Query Parameters และ Path Parameters ผลลัพธ์เปลี่ยนตามค่าที่ส่ง",
+      "item": [
+        {
+          "name": "2.1 ดึงรายชื่อผู้ใช้ทั้งหมด (GET /api/users)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('โครงสร้างข้อมูลมี status, message, data ตามเกณฑ์ 4.5.6', function () {",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res).to.have.property('status');",
+                  "    pm.expect(res).to.have.property('message');",
+                  "    pm.expect(res).to.have.property('data');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.2 ค้นหาด้วย Query: search (GET /api/users?search=admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('ผลลัพธ์ตรงกับคำค้นหา admin', function () {",
+                  "    var res = pm.response.json();",
+                  "    var list = res.data.users || res.data;",
+                  "    pm.expect(list.some(u => u.username === 'admin')).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users?search=admin",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "admin"
+                }
+              ]
+            },
+            "description": "เกณฑ์ 4.5.1: ผลลัพธ์เปลี่ยนตามค่า Query Parameter"
+          }
+        },
+        {
+          "name": "2.3 กรองด้วย Query: role (GET /api/users?role=readonly)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users?role=readonly",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "readonly"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.4 กรองด้วย Query: state (GET /api/users?state=on)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users?state=on",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "on"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "2.5 ดึงข้อมูลรายบุคคลด้วย Path Parameter (GET /api/users/1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: ดึงข้อมูล ID 1 สำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.data.id).to.eql(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.1: Path Parameter ดึงข้อมูลตรงตาม ID"
+          }
+        },
+        {
+          "name": "2.6 ดึง ID ที่ไม่มีอยู่จริง (เกณฑ์ 4.5.5: Exception 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 404: ไม่พบข้อมูลผู้ใช้', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "99999"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. ส่งข้อมูล POST Requests (เกณฑ์ 4.5.2, 4.5.5)",
+      "description": "ทดสอบส่ง JSON Body บันทึกข้อมูลลง MySQL และทดสอบ Error Handling",
+      "item": [
+        {
+          "name": "3.1 เพิ่มผู้ใช้ใหม่สำเร็จ (POST /api/users)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 201 Created: บันทึกข้อมูลสำเร็จ', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.status).to.eql('success');",
+                  "    if (res.data && res.data.id) {",
+                  "        pm.environment.set('new_user_id', res.data.id);",
+                  "        pm.collectionVariables.set('new_user_id', res.data.id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student_demo\",\n  \"password\": \"password123\",\n  \"role\": \"readonly\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.2: ส่งข้อมูล JSON ผ่าน Body และบันทึกลงฐานข้อมูลถูกต้อง"
+          }
+        },
+        {
+          "name": "3.2 เพิ่มผู้ใช้ชื่อซ้ำ (เกณฑ์ 4.5.5: Exception 409 Conflict)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 409 Conflict: ชื่อผู้ใช้มีอยู่แล้ว', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\",\n  \"role\": \"readonly\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.3 กรอกข้อมูลไม่ครบ (เกณฑ์ 4.5.5: Exception 400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. อัปโหลดไฟล์ File Upload (เกณฑ์ 4.5.3)",
+      "description": "ทดสอบส่งไฟล์แบบ multipart/form-data และเปิดดูไฟล์ได้จริง",
+      "item": [
+        {
+          "name": "4.1 อัปโหลดไฟล์ประจำตัวผู้ใช้ (POST /api/users/:id/upload)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: อัปโหลดสำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var res = pm.response.json();",
+                  "    pm.expect(res.status).to.eql('success');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/1/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1",
+                "upload"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.3: ส่งไฟล์ผ่าน API ด้วย multipart/form-data อัปโหลดสำเร็จ"
+          }
+        },
+        {
+          "name": "4.2 เปิดดูไฟล์ที่อัปโหลด (GET /uploads/:filename)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/uploads/sample.txt",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "uploads",
+                "sample.txt"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.3: ตรวจสอบว่าเปิดดูไฟล์ที่จัดเก็บไว้ได้จริง"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. แก้ไขข้อมูล PUT & PATCH (เกณฑ์ 4.4.1, 4.5.7)",
+      "description": "ทดสอบ Service แบบ PUT และ PATCH สำหรับอัปเดตข้อมูลผู้ใช้",
+      "item": [
+        {
+          "name": "5.1 แก้ไขข้อมูลด้วย PUT (PUT /api/users/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: แก้ไขข้อมูลด้วย PUT สำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student_updated\",\n  \"role\": \"editonly\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{new_user_id}}"
+              ]
+            },
+            "description": "เกณฑ์ 4.4.1 & 4.5.7: บริการแก้ไขข้อมูลแบบ PUT"
+          }
+        },
+        {
+          "name": "5.2 แก้ไขข้อมูลด้วย PATCH (PATCH /api/users/:id)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: แก้ไขข้อมูลด้วย PATCH สำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student_patched\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{new_user_id}}"
+              ]
+            },
+            "description": "เกณฑ์ 4.4.1 & 4.5.7: บริการแก้ไขข้อมูลแบบ PATCH"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. ลบข้อมูล DELETE Requests (เกณฑ์ 4.4.1, 4.5.7)",
+      "description": "ทดสอบ Service แบบ DELETE ลบข้อมูลและไฟล์แนบออกจากฐานข้อมูล",
+      "item": [
+        {
+          "name": "6.1 ลบข้อมูลผู้ใช้ (DELETE /api/users/:id - เฉพาะ Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: ลบข้อมูลสำเร็จ', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/{{new_user_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{new_user_id}}"
+              ]
+            },
+            "description": "เกณฑ์ 4.4.1 & 4.5.7: บริการลบข้อมูลแบบ DELETE"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. ตรวจสอบสิทธิ์ความปลอดภัย (เกณฑ์ 4.5.10 - 401 & 403)",
+      "description": "ทดสอบระบบความปลอดภัย ไม่ส่ง Token ตอบ 401 / สิทธิ์ไม่พอตอบ 403",
+      "item": [
+        {
+          "name": "7.1 ไม่ส่ง Token (เกณฑ์ 4.5.10: ต้องตอบ 401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 401: ไม่ได้เข้าสู่ระบบ', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.10: เรียก API ที่ต้องมีสิทธิ์โดยไม่ส่ง Token ตอบ 401"
+          }
+        },
+        {
+          "name": "7.2 สิทธิ์ไม่พอ: Readonly พยายามเพิ่มผู้ใช้ (เกณฑ์ 4.5.10: ต้องตอบ 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 403: สิทธิ์ไม่เพียงพอ', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"hacker\",\n  \"password\": \"123\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            },
+            "description": "เกณฑ์ 4.5.10: ส่ง Token ของสิทธิ์ที่ไม่ถูกต้อง ตอบ 403"
+          }
+        },
+        {
+          "name": "7.3 สิทธิ์ไม่พอ: Readonly พยายามลบผู้ใช้ (เกณฑ์ 4.5.10: ต้องตอบ 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 403: สิทธิ์ไม่เพียงพอสำหรับลบข้อมูล', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{user_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/2",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "2"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.4 สิทธิ์พอ: Admin ลบผู้ใช้ได้ (ต้องตอบ 200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code 200: Admin มีสิทธิ์ลบข้อมูลได้', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

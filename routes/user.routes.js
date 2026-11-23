@@ -236,7 +236,7 @@ router.post('/:id/upload', [auth, canEdit, upload.single('file')], async (req, r
 })
 
 // 5. แก้ไขข้อมูลและเปลี่ยนไฟล์แนบ (แอดมินหรือคนมีสิทธิ์แก้)
-router.patch('/:id', [auth, canEdit, upload.single('file')], async (req, res) => {
+const handleUpdateUser = async (req, res) => {
   try {
     const { id } = req.params
     const { username, password, role } = req.body
@@ -287,14 +287,16 @@ router.patch('/:id', [auth, canEdit, upload.single('file')], async (req, res) =>
       }
     })
   } catch (error) {
-    console.error("PATCH /api/users/:id Error:", error)
+    console.error("PUT/PATCH /api/users/:id Error:", error)
     return res.status(500).json({
       status: "error",
       message: "เกิดข้อผิดพลาดในการแก้ไขข้อมูล",
       data: null
     })
   }
-})
+}
+router.put('/:id', [auth, canEdit, upload.single('file')], handleUpdateUser)
+router.patch('/:id', [auth, canEdit, upload.single('file')], handleUpdateUser)
 
 // 6. ลบคนออกจากระบบ: ลบข้อมูลพร้อมไฟล์แนบที่เกี่ยวข้องทิ้งทั้งหมด (แอดมินทำได้คนเดียว)
 router.delete('/:id', [auth, adminOnly], async (req, res) => {
