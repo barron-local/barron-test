@@ -104,6 +104,28 @@
             "type": "object"
           }
         }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "somchai_edit"
+          },
+          "password": {
+            "type": "string",
+            "example": "newpass1234"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "editor",
+              "readonly"
+            ],
+            "example": "editor"
+          }
+        }
       }
     }
   },
@@ -310,6 +332,178 @@
           },
           "404": {
             "description": "ไม่พบผู้ใช้งาน"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "แก้ไขข้อมูลผู้ใช้ (Update User with PUT)",
+        "description": "อัปเดตข้อมูลผู้ใช้งานและ/หรือไฟล์แนบ (สิทธิ์ Admin หรือ ผู้ใช้ที่มีสิทธิ์แก้ไข canEdit)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "somchai_edit"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "newpass1234"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "editor",
+                      "readonly"
+                    ],
+                    "example": "editor"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "ไฟล์แนบใหม่ (จะแทนที่ไฟล์แนบเดิม)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "แก้ไขข้อมูลสำเร็จ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ข้อมูลไม่ถูกต้อง"
+          },
+          "401": {
+            "description": "ไม่ได้ส่ง Token หรือ Token ไม่ถูกต้อง"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์แก้ไข (Forbidden)"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้ที่จะแก้ไข"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "แก้ไขข้อมูลผู้ใช้บางส่วน (Partially Update User with PATCH)",
+        "description": "แก้ไขข้อมูลผู้ใช้งานเฉพาะฟิลด์ที่ส่งมา หรืออัปเดตไฟล์แนบ (สิทธิ์ Admin หรือ ผู้ใช้ที่มีสิทธิ์แก้ไข canEdit)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "somchai_edit"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "newpass1234"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "editor",
+                      "readonly"
+                    ],
+                    "example": "editor"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "ไฟล์แนบใหม่ (จะแทนที่ไฟล์แนบเดิม)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "แก้ไขข้อมูลสำเร็จ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ข้อมูลไม่ถูกต้อง"
+          },
+          "401": {
+            "description": "ไม่ได้ส่ง Token หรือ Token ไม่ถูกต้อง"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์แก้ไข (Forbidden)"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้ที่จะแก้ไข"
           }
         }
       },

@@ -252,21 +252,21 @@
 ---
 
 ### 4.7 แก้ไขข้อมูลผู้ใช้และไฟล์แนบ (Update User & Attachment)
-- **Method:** `PUT`
+- **Method:** `PUT` / `PATCH` (รองรับทั้งสองวิธี)
 - **Endpoint:** `/api/users/:id`
 - **Permission:** `admin` หรือ `editonly`
-- **Data Transport:** Path Parameter (`:id`) + Request Body (`multipart/form-data`)
-  - `username` (text)
-  - `role` (text - แก้ไขได้เฉพาะ admin)
+- **Data Transport:** Path Parameter (`:id`) + Request Body (`multipart/form-data` หรือ `application/json`)
+  - `username` (text - ข้อมูลชื่อผู้ใช้ใหม่)
+  - `password` (text - รหัสผ่านใหม่)
+  - `role` (text - สิทธิ์ใหม่ แก้ไขได้เฉพาะ admin)
   - `file` (binary/file - อัปโหลดไฟล์ใหม่แทนที่ไฟล์เดิม)
 - **Response Code 200 (Success):**
 ```json
 {
   "status": "success",
-  "message": "อัปเดตข้อมูลผู้ใช้และไฟล์แนบเรียบร้อย",
+  "message": "แก้ไขข้อมูลสำเร็จ",
   "data": {
-    "id": 4,
-    "username": "johndoe_updated",
+    "id": "4",
     "filename": "new_resume.pdf"
   }
 }

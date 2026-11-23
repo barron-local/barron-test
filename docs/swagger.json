@@ -25,27 +25,84 @@
     "schemas": {
       "LoginRequest": {
         "type": "object",
-        "required": ["username", "password"],
+        "required": [
+          "username",
+          "password"
+        ],
         "properties": {
-          "username": { "type": "string", "example": "admin" },
-          "password": { "type": "string", "example": "password" }
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "example": "password"
+          }
         }
       },
       "CreateUserRequest": {
         "type": "object",
-        "required": ["username", "password", "role"],
+        "required": [
+          "username",
+          "password",
+          "role"
+        ],
         "properties": {
-          "username": { "type": "string", "example": "somchai" },
-          "password": { "type": "string", "example": "1234" },
-          "role": { "type": "string", "enum": ["admin", "editor", "readonly"], "example": "editor" }
+          "username": {
+            "type": "string",
+            "example": "somchai"
+          },
+          "password": {
+            "type": "string",
+            "example": "1234"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "editor",
+              "readonly"
+            ],
+            "example": "editor"
+          }
         }
       },
       "ApiResponse": {
         "type": "object",
         "properties": {
-          "status": { "type": "string", "example": "success" },
-          "message": { "type": "string", "example": "ดำเนินการสำเร็จ" },
-          "data": { "type": "object" }
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "message": {
+            "type": "string",
+            "example": "ดำเนินการสำเร็จ"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "somchai_edit"
+          },
+          "password": {
+            "type": "string",
+            "example": "newpass1234"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "editor",
+              "readonly"
+            ],
+            "example": "editor"
+          }
         }
       }
     }
@@ -53,123 +110,438 @@
   "paths": {
     "/api/login": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "เข้าสู่ระบบ (Login)",
         "description": "ตรวจสอบชื่อผู้ใช้และรหัสผ่าน พร้อมบันทึกลงตาราง log และอัปเดตสถานะ status เป็น on",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
             }
           }
         },
         "responses": {
-          "200": { "description": "เข้าสู่ระบบสำเร็จ พร้อมส่งคืน JWT Token" },
-          "400": { "description": "ข้อมูลไม่ครบถ้วน" },
-          "401": { "description": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" }
+          "200": {
+            "description": "เข้าสู่ระบบสำเร็จ พร้อมส่งคืน JWT Token"
+          },
+          "400": {
+            "description": "ข้อมูลไม่ครบถ้วน"
+          },
+          "401": {
+            "description": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
+          }
         }
       }
     },
     "/api/logout": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "ออกจากระบบ (Logout)",
         "description": "ออกจากระบบและปรับสถานะในตาราง status ของผู้ใช้เป็น off",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "ออกจากระบบสำเร็จ" },
-          "401": { "description": "Token ไม่ถูกต้อง หรือหมดอายุ" }
+          "200": {
+            "description": "ออกจากระบบสำเร็จ"
+          },
+          "401": {
+            "description": "Token ไม่ถูกต้อง หรือหมดอายุ"
+          }
         }
       }
     },
     "/api/me": {
       "get": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "ดูข้อมูลผู้ใช้งานปัจจุบัน (Current User Profile)",
         "description": "ดึงข้อมูล ID, Username, Role, สถานะปัจจุบัน และเวลาที่ล็อกอินล่าสุด",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "responses": {
-          "200": { "description": "ดึงข้อมูลสำเร็จ" },
-          "401": { "description": "Token ไม่ถูกต้อง" }
+          "200": {
+            "description": "ดึงข้อมูลสำเร็จ"
+          },
+          "401": {
+            "description": "Token ไม่ถูกต้อง"
+          }
         }
       }
     },
     "/api/users": {
       "get": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "ดึงรายชื่อผู้ใช้ทั้งหมด (List Users)",
         "description": "รองรับการค้นหา (Search), การกรองตามสิทธิ์ (role, state) และการแบ่งหน้า (Pagination)",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "search", "in": "query", "description": "ค้นหาด้วยชื่อผู้ใช้", "schema": { "type": "string" } },
-          { "name": "role", "in": "query", "description": "กรองตามสิทธิ์ (admin, editor, readonly)", "schema": { "type": "string" } },
-          { "name": "state", "in": "query", "description": "กรองตามสถานะ (on, off)", "schema": { "type": "string" } },
-          { "name": "page", "in": "query", "description": "หมายเลขหน้า (Default: 1)", "schema": { "type": "integer", "default": 1 } },
-          { "name": "limit", "in": "query", "description": "จำนวนรายการต่อหน้า (Default: 10)", "schema": { "type": "integer", "default": 10 } }
+          {
+            "name": "search",
+            "in": "query",
+            "description": "ค้นหาด้วยชื่อผู้ใช้",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "กรองตามสิทธิ์ (admin, editor, readonly)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "กรองตามสถานะ (on, off)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "หมายเลขหน้า (Default: 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า (Default: 10)",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "ดึงรายการสำเร็จ" },
-          "401": { "description": "ไม่ได้ระบุ Token" }
+          "200": {
+            "description": "ดึงรายการสำเร็จ"
+          },
+          "401": {
+            "description": "ไม่ได้ระบุ Token"
+          }
         }
       },
       "post": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "เพิ่มผู้ใช้ใหม่ (Create User)",
         "description": "สร้างบัญชีผู้ใช้งานใหม่ลงในฐานข้อมูล (เฉพาะผู้ดูแลระบบ Role: admin เท่านั้น)",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/CreateUserRequest" }
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
             }
           }
         },
         "responses": {
-          "201": { "description": "สร้างผู้ใช้สำเร็จ" },
-          "400": { "description": "ข้อมูลไม่ถูกต้องหรือชื่อผู้ใช้ซ้ำ" },
-          "403": { "description": "ไม่มีสิทธิ์ดำเนินการ (Admin Only)" }
+          "201": {
+            "description": "สร้างผู้ใช้สำเร็จ"
+          },
+          "400": {
+            "description": "ข้อมูลไม่ถูกต้องหรือชื่อผู้ใช้ซ้ำ"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์ดำเนินการ (Admin Only)"
+          }
         }
       }
     },
     "/api/users/{id}": {
       "get": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "ดึงข้อมูลผู้ใช้รายบุคคล (Get User by ID)",
         "description": "ดึงข้อมูลของผู้ใช้ตาม ID ที่ระบุ",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "description": "User ID", "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "พบข้อมูลผู้ใช้" },
-          "404": { "description": "ไม่พบผู้ใช้งาน" }
+          "200": {
+            "description": "พบข้อมูลผู้ใช้"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้งาน"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "แก้ไขข้อมูลผู้ใช้ (Update User with PUT)",
+        "description": "อัปเดตข้อมูลผู้ใช้งานและ/หรือไฟล์แนบ (สิทธิ์ Admin หรือ ผู้ใช้ที่มีสิทธิ์แก้ไข canEdit)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "somchai_edit"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "newpass1234"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "editor",
+                      "readonly"
+                    ],
+                    "example": "editor"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "ไฟล์แนบใหม่ (จะแทนที่ไฟล์แนบเดิม)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "แก้ไขข้อมูลสำเร็จ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ข้อมูลไม่ถูกต้อง"
+          },
+          "401": {
+            "description": "ไม่ได้ส่ง Token หรือ Token ไม่ถูกต้อง"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์แก้ไข (Forbidden)"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้ที่จะแก้ไข"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "แก้ไขข้อมูลผู้ใช้บางส่วน (Partially Update User with PATCH)",
+        "description": "แก้ไขข้อมูลผู้ใช้งานเฉพาะฟิลด์ที่ส่งมา หรืออัปเดตไฟล์แนบ (สิทธิ์ Admin หรือ ผู้ใช้ที่มีสิทธิ์แก้ไข canEdit)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "somchai_edit"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "newpass1234"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "admin",
+                      "editor",
+                      "readonly"
+                    ],
+                    "example": "editor"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "ไฟล์แนบใหม่ (จะแทนที่ไฟล์แนบเดิม)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "แก้ไขข้อมูลสำเร็จ",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ข้อมูลไม่ถูกต้อง"
+          },
+          "401": {
+            "description": "ไม่ได้ส่ง Token หรือ Token ไม่ถูกต้อง"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์แก้ไข (Forbidden)"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้ที่จะแก้ไข"
+          }
         }
       },
       "delete": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "ลบผู้ใช้ (Delete User)",
         "description": "ลบบัญชีผู้ใช้และข้อมูลที่เกี่ยวข้อง (Admin Only)",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "description": "User ID", "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "ลบผู้ใช้สำเร็จ" },
-          "403": { "description": "ไม่มีสิทธิ์ลบ" },
-          "404": { "description": "ไม่พบผู้ใช้ที่ต้องการลบ" }
+          "200": {
+            "description": "ลบผู้ใช้สำเร็จ"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์ลบ"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้ที่ต้องการลบ"
+          }
         }
       }
     },
     "/api/users/{id}/upload": {
       "post": {
-        "tags": ["Users"],
+        "tags": [
+          "Users"
+        ],
         "summary": "อัปโหลดไฟล์ประจำตัวผู้ใช้ (Upload User File)",
         "description": "อัปโหลดไฟล์เอกสาร/รูปภาพแนบเข้ากับข้อมูลผู้ใช้งาน (Multipart/form-data)",
-        "security": [{ "BearerAuth": [] }],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "description": "User ID", "schema": { "type": "integer" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -178,29 +550,50 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": { "type": "string", "format": "binary" }
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "อัปโหลดไฟล์สำเร็จ" },
-          "400": { "description": "ไม่ได้แนบไฟล์" }
+          "200": {
+            "description": "อัปโหลดไฟล์สำเร็จ"
+          },
+          "400": {
+            "description": "ไม่ได้แนบไฟล์"
+          }
         }
       }
     },
     "/uploads/{filename}": {
       "get": {
-        "tags": ["Files"],
+        "tags": [
+          "Files"
+        ],
         "summary": "ดาวน์โหลด/เปิดดูไฟล์ที่อัปโหลด (View Uploaded File)",
         "description": "เข้าถึงไฟล์รูปภาพหรือเอกสารที่ถูกอัปโหลดไว้",
         "parameters": [
-          { "name": "filename", "in": "path", "required": true, "description": "ชื่อไฟล์", "schema": { "type": "string" } }
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "ชื่อไฟล์",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "คืนค่าไฟล์" },
-          "404": { "description": "ไม่พบไฟล์" }
+          "200": {
+            "description": "คืนค่าไฟล์"
+          },
+          "404": {
+            "description": "ไม่พบไฟล์"
+          }
         }
       }
     }
