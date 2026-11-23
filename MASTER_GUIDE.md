@@ -227,16 +227,41 @@ sudo docker run -d \
    > ```
 3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops1234`)
 4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `devops-tnk`
-5. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> ก๊อปปี้ Registration Token มาวางในคำสั่งด้านล่าง:
+5. ไปที่เมนูโปรเจกต์: **Settings -> CI/CD -> Runners** -> กด **New project runner**
+   - **Tags:** ปล่อยว่างไว้ และ **ต้องติ๊กถูก [x] Run untagged jobs** (สำคัญมาก)
+   - กด **Create runner** แล้วก๊อปปี้ Token ที่ขึ้นต้นด้วย `glrt-...`
+   - รันคำสั่งเชื่อมต่อ Runner (เลือกวิธีใดวิธีหนึ่ง):
+
+   **วิธีที่ 1 (ง่ายและเร็วที่สุด - ผ่านสคริปต์):**
    ```bash
-   sudo docker exec -it gitlab-runner gitlab-runner register \
+   sudo ./register_runner.sh "glrt-ใส่_TOKEN_ที่ก๊อปปี้มา"
+   # หรือรัน setup.sh แล้วเลือกเมนูข้อ 8) register gitlab runner
+   ```
+
+   **วิธีที่ 2 (รันคำสั่งโดยตรง):**
+   ```bash
+   TOKEN="glrt-ใส่_TOKEN_ที่ก๊อปปี้มา"
+   sudo docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml
+   NETWORK_NAME=$(sudo docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+   [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$PWD")_default"
+
+   sudo docker exec -i gitlab-runner gitlab-runner register \
      --non-interactive \
-     --url "http://${SERVER_IP}:8080/" \
-     --registration-token "ใส่_TOKEN_ที่ก๊อปปี้มา" \
+     --url "http://gitlab/" \
+     --token "$TOKEN" \
      --executor "docker" \
      --docker-image "docker:latest" \
-     --description "docker-runner" \
-     --docker-volumes "/var/run/docker.sock:/var/run/docker.sock"
+     --docker-privileged \
+     --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
+     --docker-volumes "/cache" \
+     --docker-network-mode "$NETWORK_NAME" \
+     --docker-pull-policy "if-not-present" \
+     --clone-url "http://gitlab/" \
+     --description "docker-runner"
+
+   sudo docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false OR active = false;"
+   sudo docker restart gitlab-runner
+   sudo docker exec gitlab-runner gitlab-runner verify
    ```
 
 ---

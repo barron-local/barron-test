@@ -507,8 +507,8 @@ EOF
         --clone-url "http://gitlab/" \
         --description "docker-runner"
 
-      echo "[*] Activating runner & configuring untagged jobs..."
-      docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET active = true, run_untagged = true WHERE run_untagged = false OR active = false;" &>/dev/null || true
+      echo "[*] Activating runner & configuring organization and untagged jobs in database..."
+      docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false OR active = false;" &>/dev/null || true
 
       echo "[*] Restarting gitlab-runner service..."
       docker restart gitlab-runner &>/dev/null || true
@@ -516,7 +516,20 @@ EOF
       END_TIME=$(date +%s)
       ELAPSED=$((END_TIME - START_TIME))
       echo "==> [✓] GitLab Runner successfully registered and online in ${ELAPSED} seconds!"
+      echo "==> Verifying runner status..."
+      docker exec gitlab-runner gitlab-runner verify
     fi
+  fi
+}
+
+fn_register_gitlab_runner_standalone() {
+  clear
+  echo "Tip: On GitLab Web UI (Settings -> CI/CD -> Runners), create a new runner and check [x] 'Run untagged jobs'"
+  read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
+  if [ -n "$USER_RUNNER_TOKEN" ]; then
+    bash "$SCRIPT_DIR/register_runner.sh" "$USER_RUNNER_TOKEN"
+  else
+    echo "Error: Token cannot be empty!"
   fi
 }
 
@@ -529,6 +542,7 @@ echo "4) show host command"
 echo "5) reset gitlab"
 echo "6) push gitlab branches"
 echo "7) disk cleanup"
+echo "8) register gitlab runner"
 read -p "Select [0]: " USER_CHOICE
 
 if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ]; then
@@ -544,4 +558,5 @@ case $USER_CHOICE in
   5) fn_reset_gitlab_root ;;
   6) fn_auto_push_gitlab_branches ;;
   7) fn_cleanup_disk_space ;;
+  8) fn_register_gitlab_runner_standalone ;;
 esac
