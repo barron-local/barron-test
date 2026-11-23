@@ -381,3 +381,26 @@ ip route get 1.1.1.1 | awk '{print $7}'
 > 2. ค้นหาค่า `allowPublicKeyRetrieval` เปลี่ยนเป็น **`TRUE`**
 > 3. ค้นหาค่า `useSSL` เปลี่ยนเป็น **`FALSE`**
 > 4. กด **Test Connection** อีกครั้ง จะเชื่อมต่อสำเร็จ 100% ทันที
+
+---
+
+## ภาคผนวก: การยิงทดสอบ API ด้วย Postman สำหรับการให้คะแนน (เกณฑ์ 4.4 และ 4.5)
+
+ในโฟลเดอร์ `docs/postman/` หรือบนหน้า Desktop โฟลเดอร์ `postman-devops-tnk` ได้เตรียมไฟล์ Preset สำหรับนำเข้า (Import) ในโปรแกรม Postman ไว้เรียบร้อยแล้ว:
+1. **`devops-tnk.postman_collection.json`** - ชุดคำสั่งยิง API ครบทุกเกณฑ์
+2. **`devops-tnk-domain.postman_environment.json`** - ตัวแปร Environment สำหรับยิงผ่าน `https://backend.mydomain.lab`
+3. **`devops-tnk-localhost.postman_environment.json`** - ตัวแปร Environment สำหรับยิงผ่าน `http://localhost:5000`
+
+### วิธีนำเข้าและใช้งานใน Postman (3 ขั้นตอนง่ายๆ):
+1. **เปิด Postman ➔ กดปุ่ม `Import` (มุมซ้ายบน)**
+   - ลากไฟล์ทั้ง 3 ไฟล์จากโฟลเดอร์ `postman-devops-tnk` เข้าไปใน Postman
+2. **เลือก Environment ด้านบนขวา:**
+   - เลือกเป็น **`DevOps TNK (Domain: backend.mydomain.lab)`** หรือ **`DevOps TNK (Localhost: 5000)`**
+3. **ยิงคำสั่งตามหัวข้อที่กรรมการต้องการตรวจ:**
+   - **โฟลเดอร์ 01. Login & Security (เกณฑ์ 4.5.4):** กดยิงข้อ `1.1 Login ด้วย Admin` ➔ **ระบบจะบันทึก Token ลงตัวแปรให้อัตโนมัติทันที** คำสั่งอื่นหลังจากนี้จะยิงได้ทันทีโดยไม่ต้องก๊อปปี้ Token เอง
+   - **โฟลเดอร์ 02. GET Requests (เกณฑ์ 4.5.1, 4.5.6):** ยิงค้นหาด้วย Query (`?search=admin`), กรองข้อมูล (`?role=readonly`), หรือยิงตาม Path Param (`/api/users/1`)
+   - **โฟลเดอร์ 03. POST Requests (เกณฑ์ 4.5.2, 4.5.5):** ยิงเพิ่มผู้ใช้ใหม่, ทดสอบชื่อซ้ำ (ตอบ 409), หรือกรอกไม่ครบ (ตอบ 400)
+   - **โฟลเดอร์ 04. File Upload (เกณฑ์ 4.5.3):** ยิงอัปโหลดไฟล์ `multipart/form-data` และเปิดดูไฟล์ได้
+   - **โฟลเดอร์ 05. PUT & PATCH (เกณฑ์ 4.4.1, 4.5.7):** ยิงแก้ไขข้อมูลผู้ใช้
+   - **โฟลเดอร์ 06. DELETE (เกณฑ์ 4.4.1, 4.5.7):** ยิงลบข้อมูลผู้ใช้
+   - **โฟลเดอร์ 07. ตรวจสอบสิทธิ์ (เกณฑ์ 4.5.10):** ยิงไม่ส่ง Token (ตอบ 401 Unauthorized), ใช้ User ทั่วไปพยายามลบ/เพิ่ม (ตอบ 403 Forbidden)
