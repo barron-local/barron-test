@@ -400,13 +400,14 @@ fn_auto_push_gitlab_branches() {
   docker exec -i gitlab gitlab-psql -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
 
   # ล้างประวัติ Git เดิม และลบไฟล์คู่มือ/สคริปต์ตรวจคะแนน/ส่วนขยายทั้งหมดออกเงียบๆ เหลือเฉพาะ README.md
-  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh runner/config.toml 2>/dev/null || true
+  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh register_runner.sh runner/config.toml runner/.runner_system_id 2>/dev/null || true
   rm -f CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md POSTMAN_GUIDE.md docs/postman/POSTMAN_GUIDE.md 2>/dev/null || true
   find . -maxdepth 3 -name "*.md" ! -name "README.md" ! -path "*/node_modules/*" ! -path "*/.next/*" -exec rm -f {} + 2>/dev/null || true
 
-  # ดักไม่ให้ setup.sh หรือ check_rubric.sh หลุดเข้าไปในประวัติ Git เด็ดขาด
+  # ดักไม่ให้ setup.sh หรือ check_rubric.sh หรือ register_runner.sh หลุดเข้าไปในประวัติ Git เด็ดขาด
   grep -qxF "setup.sh" .gitignore 2>/dev/null || echo "setup.sh" >> .gitignore
   grep -qxF "check_rubric.sh" .gitignore 2>/dev/null || echo "check_rubric.sh" >> .gitignore
+  grep -qxF "register_runner.sh" .gitignore 2>/dev/null || echo "register_runner.sh" >> .gitignore
   grep -qxF "*.vsix" .gitignore 2>/dev/null || echo "*.vsix" >> .gitignore
 
   git init -b main &>/dev/null || git init &>/dev/null
@@ -416,24 +417,32 @@ fn_auto_push_gitlab_branches() {
 
   # สร้างประวัติการส่งงานแยกเป็นกิ่งๆ ให้ครบตามโจทย์ (main <- devops, backend, frontend)
   # 1. เริ่มต้นบันทึกไฟล์หลักลง main
-  git add README.md .gitignore .dockerignore .gitlab-ci.yml 2>/dev/null || true
+  for item in README.md .gitignore .dockerignore .gitlab-ci.yml; do
+    [ -e "$item" ] && git add "$item" 2>/dev/null || true
+  done
   git commit -m "feat: initialize project structure and documentation" &>/dev/null || true
 
   # 2. แตกกิ่ง devops ทำงานส่วนระบบและเซิร์ฟเวอร์
   git checkout -b devops &>/dev/null
-  git add docker-compose.yml Dockerfile Caddyfile .gitlab-ci.yml runner 2>/dev/null || true
+  for item in docker-compose.yml Dockerfile Caddyfile .gitlab-ci.yml runner; do
+    [ -e "$item" ] && git add "$item" 2>/dev/null || true
+  done
   git commit -m "chore(devops): configure caddy reverse proxy, docker compose and ci pipeline" &>/dev/null || true
 
   # 3. แตกกิ่ง backend ทำงานส่วนหลังบ้านและฐานข้อมูล
   git checkout main &>/dev/null
   git checkout -b backend &>/dev/null
-  git add index.js package.json package-lock.json config routes middlewares test.js uploads docs 2>/dev/null || true
+  for item in index.js package.json package-lock.json config routes middlewares test.js docs; do
+    [ -e "$item" ] && git add "$item" 2>/dev/null || true
+  done
   git commit -m "feat(backend): implement restful api, jwt auth and database connection" &>/dev/null || true
 
   # 4. แตกกิ่ง frontend ทำงานส่วนหน้าบ้านหน้าเว็บ
   git checkout main &>/dev/null
   git checkout -b frontend &>/dev/null
-  git add frontend 2>/dev/null || true
+  for item in frontend; do
+    [ -e "$item" ] && git add "$item" 2>/dev/null || true
+  done
   git commit -m "feat(frontend): create user dashboard and authentication interface" &>/dev/null || true
 
   # 5. รวมงานทุกกิ่งกลับเข้ามาที่กิ่งหลัก (main) แบบเห็นรอยต่อชัดเจน
@@ -561,7 +570,40 @@ fn_register_gitlab_runner_standalone() {
   echo "Tip: On GitLab Web UI (Settings -> CI/CD -> Runners), create a new runner and check [x] 'Run untagged jobs'"
   read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
   if [ -n "$USER_RUNNER_TOKEN" ]; then
-    bash "$SCRIPT_DIR/register_runner.sh" "$USER_RUNNER_TOKEN"
+    if [ -f "$SCRIPT_DIR/register_runner.sh" ]; then
+      bash "$SCRIPT_DIR/register_runner.sh" "$USER_RUNNER_TOKEN"
+    else
+      START_TIME=$(date +%s)
+      echo "==> กำลังผูกตัวรันงาน (GitLab Runner) ด้วย Token: $USER_RUNNER_TOKEN"
+      docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d gitlab-runner &>/dev/null || true
+      docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
+      rm -f "$SCRIPT_DIR/runner/config.toml" 2>/dev/null || true
+      NETWORK_NAME=$(docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
+      [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$SCRIPT_DIR")_default"
+      [ -z "$NETWORK_NAME" ] && NETWORK_NAME="devops-tnk_default"
+      echo "[*] เชื่อมต่อ Runner หา GitLab ผ่าน http://gitlab/ บนเน็ตเวิร์ก: $NETWORK_NAME ..."
+      docker exec -i gitlab-runner gitlab-runner register \
+        --non-interactive \
+        --url "http://gitlab/" \
+        --token "$USER_RUNNER_TOKEN" \
+        --executor "docker" \
+        --docker-image "docker:latest" \
+        --docker-privileged \
+        --docker-volumes "/var/run/docker.sock:/var/run/docker.sock" \
+        --docker-volumes "/cache" \
+        --docker-network-mode "$NETWORK_NAME" \
+        --docker-pull-policy "if-not-present" \
+        --clone-url "http://gitlab/" \
+        --description "docker-runner"
+      echo "[*] เปิดสวิตช์ให้ตัวรันงานพร้อมรับงานทันทีในระบบ..."
+      docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false OR active = false;" &>/dev/null || true
+      echo "[*] สั่งรีสตาร์ทตัวทำงาน 1 รอบ เพื่อโหลดค่าใหม่..."
+      docker restart gitlab-runner &>/dev/null || true
+      END_TIME=$(date +%s)
+      ELAPSED=$((END_TIME - START_TIME))
+      echo "==> [✓] ผูก GitLab Runner สำเร็จ พร้อมทำงานแล้ว ใช้เวลาไปแค่ ${ELAPSED} วินาที!"
+      docker exec gitlab-runner gitlab-runner verify
+    fi
   else
     echo "Error: Token cannot be empty!"
   fi

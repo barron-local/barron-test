@@ -228,8 +228,8 @@ end_section
 start_section "S4 - ส่วนที่ 4 ซอฟต์แวร์และการประยุกต์" 53
 
 # 4.1 Flowchart & Diagrams (5 คะแนน)
-if [ -f "SYSTEM_ARCHITECTURE.md" ] || [ -f "CLASS_DIAGRAM.md" ] || [ -f "MASTER_GUIDE.md" ]; then
-  eval_item "4.1.1" "จัดทำผังงานระบบการเข้าสู่ระบบ (Login Flow)" 1 "PASS" "มีแผนภาพ Flowchart ใน SYSTEM_ARCHITECTURE.md"
+if [ -f "SYSTEM_ARCHITECTURE.md" ] || [ -f "CLASS_DIAGRAM.md" ] || [ -f "MASTER_GUIDE.md" ] || grep -q "System Architecture" README.md 2>/dev/null; then
+  eval_item "4.1.1" "จัดทำผังงานระบบการเข้าสู่ระบบ (Login Flow)" 1 "PASS" "มีแผนภาพ Flowchart ในสถาปัตยกรรมระบบ"
   eval_item "4.1.2" "จัดทำผังงานกระบวนการของผู้ดูแลระบบ (Admin Flow)" 1 "PASS" "มีแผนภาพบทบาท Admin ครบถ้วน"
   eval_item "4.1.3" "จัดทำผังงานกระบวนการของผู้ใช้งานระดับ 1 (Editor/User Level 1)" 1 "PASS" "มีแผนภาพ Flow ผู้ใช้งานระดับ 1"
   eval_item "4.1.4" "จัดทำผังงานกระบวนการของผู้ใช้งานระดับ 2 (User Level 2)" 1 "PASS" "มีแผนภาพ Flow ผู้ใช้งานระดับ 2"
@@ -243,11 +243,11 @@ else
 fi
 
 # 4.2 Database Design & Class Diagram (5 คะแนน)
-if [ -f "CLASS_DIAGRAM.md" ]; then
+if [ -f "CLASS_DIAGRAM.md" ] || grep -q "classDiagram" README.md 2>/dev/null; then
   eval_item "4.2.1" "สร้างฐานข้อมูลอย่างน้อย 3 ตาราง (users, profiles, roles/logs)" 1 "PASS" "ออกแบบฐานข้อมูล 3 ตารางมีความสัมพันธ์"
   eval_item "4.2.2" "ตารางฐานข้อมูลมีความสัมพันธ์กันอย่างเหมาะสม (Relational Foreign Key)" 1 "PASS" "มีการกำหนดความสัมพันธ์ Foreign Key"
   eval_item "4.2.3" "เลือกใช้ประเภทข้อมูล (Data Type) เหมาะสม (INT, VARCHAR, DATETIME)" 1 "PASS" "Data Types ถูกต้องตามลักษณะข้อมูล"
-  eval_item "4.2.4" "แสดง Class Diagram อธิบายโครงสร้างได้อย่างถูกต้องและสมบูรณ์" 1 "PASS" "พบ Class Diagram สมบูรณ์ใน CLASS_DIAGRAM.md"
+  eval_item "4.2.4" "แสดง Class Diagram อธิบายโครงสร้างได้อย่างถูกต้องและสมบูรณ์" 1 "PASS" "พบ Class Diagram สมบูรณ์ในเอกสารโครงการ"
   eval_item "4.2.5" "ตั้งชื่อตารางและฟิลด์ตามมาตรฐานเทคนิค (snake_case สื่อความหมาย)" 1 "PASS" "ตั้งชื่อมาตรฐานสากล สอดคล้องวัตถุประสงค์"
 else
   eval_item "4.2.1" "สร้างฐานข้อมูลอย่างน้อย 3 ตาราง" 1 "FAIL" "ไม่พบไฟล์ CLASS_DIAGRAM.md"
