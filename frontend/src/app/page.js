@@ -294,9 +294,6 @@ export default function Home() {
     return (
       <div className="login-box card">
         <h2 className="login-title">เข้าสู่ระบบ (Login)</h2>
-        <div style={{ textAlign: 'center', marginBottom: '16px', fontSize: '13px', color: '#16a34a', fontWeight: 'bold' }}>
-          ✨ DevOps TNK Production (CI/CD Auto-Deploy Active)
-        </div>
         {msg.text && (
           <div className={msg.isError ? "alert-error" : "alert-success"}>
             {msg.text}
@@ -329,16 +326,6 @@ export default function Home() {
             เข้าสู่ระบบ
           </button>
         </form>
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <a
-            href="/docs"
-            target="_blank"
-            rel="noreferrer"
-            style={{ color: '#4f46e5', textDecoration: 'none', fontSize: '13px', fontWeight: 500 }}
-          >
-            📚 ดูเอกสาร API Specification (/docs)
-          </a>
-        </div>
       </div>
     );
   }
