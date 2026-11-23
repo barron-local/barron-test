@@ -241,10 +241,15 @@ sudo docker run -d \
    **วิธีที่ 2 (รันคำสั่งโดยตรง):**
    ```bash
    TOKEN="glrt-ใส่_TOKEN_ที่ก๊อปปี้มา"
+
+   # 1. ล้างของเก่าทิ้งก่อน ป้องกันของเก่าที่พังมาตีกับของใหม่
    sudo docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml
+
+   # 2. เช็คชื่อวงเน็ตเวิร์กที่เชื่อมต่อกันอยู่
    NETWORK_NAME=$(sudo docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
    [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$PWD")_default"
 
+   # 3. สั่งต่อตรงเข้าหา GitLab ข้างในเครื่องเลย (ห้ามใส่ 127.0.0.1 หรือ 8080 เพราะมันจะหากันไม่เจอ)
    sudo docker exec -i gitlab-runner gitlab-runner register \
      --non-interactive \
      --url "http://gitlab/" \
@@ -259,8 +264,13 @@ sudo docker run -d \
      --clone-url "http://gitlab/" \
      --description "docker-runner"
 
+   # 4. เปิดสวิตช์ให้รับงานได้ทันที แก้ไขระบบให้พร้อมทำงานเลย ไม่ต้องรอตั้งค่าเพิ่ม
    sudo docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false OR active = false;"
+
+   # 5. รีสตาร์ทตัวทำงาน 1 รอบ ให้มันเริ่มจำค่าใหม่แล้วพร้อมลุย
    sudo docker restart gitlab-runner
+
+   # 6. ตรวจสอบดูว่าตัวทำงานออนไลน์พร้อมรันงานแล้วหรือยัง
    sudo docker exec gitlab-runner gitlab-runner verify
    ```
 

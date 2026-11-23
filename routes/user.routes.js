@@ -5,7 +5,7 @@ const multer = require("multer")
 const db = require("../config/db")
 const { auth, adminOnly, canEdit } = require("../middlewares/auth.middleware")
 
-// ตั้งค่า Multer Storage สำหรับอัปโหลดไฟล์ลงโฟลเดอร์ uploads
+// ตั้งค่าที่เก็บไฟล์: ให้เซฟไฟล์ที่คนอัปโหลดลงในโฟลเดอร์ uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadPath = path.join(__dirname, "../uploads")
@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 })
 const upload = multer({ storage })
 
-// 1. ดึงรายชื่อผู้ใช้ทั้งหมด รองรับ Search, กรองตามสิทธิ์ (role, state) และการแบ่งหน้า (Pagination)
+// 1. ดึงรายชื่อคนทั้งหมด: ค้นหาชื่อได้ เลือกดูตามกลุ่มได้ และแบ่งเป็นหน้าๆ ได้
 router.get('/', auth, async (req, res) => {
   try {
     const { search = '', role = '', state = '', page = 1, limit = 10 } = req.query
@@ -90,7 +90,7 @@ router.get('/', auth, async (req, res) => {
   }
 })
 
-// 2. ดึงข้อมูลผู้ใช้รายบุคคลตาม id ที่ระบุใน Path Parameter
+// 2. ดูข้อมูลคนทีละคน: เลือกดูตามรหัสประจำตัว (id)
 router.get('/:id', auth, async (req, res) => {
   try {
     const { id } = req.params
@@ -131,7 +131,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 })
 
-// 3. เพิ่มผู้ใช้ใหม่เข้าสู่ระบบ พร้อมตรวจสอบความถูกต้องของข้อมูล (เฉพาะ Admin)
+// 3. เพิ่มคนใหม่เข้าสู่ระบบ: ตรวจข้อมูลให้ครบถ้วนก่อนบันทึก (แอดมินทำได้คนเดียว)
 router.post('/', [auth, adminOnly], async (req, res) => {
   try {
     const { username, password, role } = req.body
@@ -176,7 +176,7 @@ router.post('/', [auth, adminOnly], async (req, res) => {
   }
 })
 
-// 4. อัปโหลดและแนบไฟล์ข้อมูลให้กับผู้ใช้งาน พร้อมลบไฟล์เก่าออกจากระบบ (เฉพาะ Admin และ Editonly)
+// 4. แนบไฟล์ให้คนในระบบ: ถ้ามีไฟล์เก่าอยู่จะลบทิ้งแล้วใส่ไฟล์ใหม่แทน (แอดมินหรือคนมีสิทธิ์แก้)
 router.post('/:id/upload', [auth, canEdit, upload.single('file')], async (req, res) => {
   try {
     const { id } = req.params
@@ -235,7 +235,7 @@ router.post('/:id/upload', [auth, canEdit, upload.single('file')], async (req, r
   }
 })
 
-// 5. แก้ไขข้อมูลผู้ใช้และไฟล์แนบเดิม (Admin หรือ Editonly)
+// 5. แก้ไขข้อมูลและเปลี่ยนไฟล์แนบ (แอดมินหรือคนมีสิทธิ์แก้)
 router.patch('/:id', [auth, canEdit, upload.single('file')], async (req, res) => {
   try {
     const { id } = req.params
@@ -296,7 +296,7 @@ router.patch('/:id', [auth, canEdit, upload.single('file')], async (req, res) =>
   }
 })
 
-// 6. ลบข้อมูลผู้ใช้และไฟล์แนบที่เกี่ยวข้องออกจากระบบ (เฉพาะ Admin)
+// 6. ลบคนออกจากระบบ: ลบข้อมูลพร้อมไฟล์แนบที่เกี่ยวข้องทิ้งทั้งหมด (แอดมินทำได้คนเดียว)
 router.delete('/:id', [auth, adminOnly], async (req, res) => {
   try {
     const { id } = req.params

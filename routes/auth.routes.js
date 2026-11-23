@@ -4,7 +4,7 @@ const db = require("../config/db")
 const { JWT_SECRET, auth } = require("../middlewares/auth.middleware")
 const router = express.Router()
 
-// 1. API เข้าสู่ระบบ (Login): ตรวจสอบบัญชี, บันทึกประวัติลง log, ปรับสถานะเป็น on, และออก JWT Token
+// 1. ระบบล็อกอิน: ตรวจชื่อกับรหัสผ่าน บันทึกเวลาเข้าใช้ ปรับสถานะว่าออนไลน์ และแจกบัตรผ่าน
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body
@@ -71,7 +71,7 @@ router.post('/login', async (req, res) => {
   }
 })
 
-// 2. API ออกจากระบบ (Logout): ปรับสถานะในตาราง status เป็น off
+// 2. ระบบออกจากระบบ (Logout): ปรับสถานะเป็นออฟไลน์ (off)
 router.post('/logout', auth, async (req, res) => {
   try {
     await db.query("UPDATE status SET state = 'off' WHERE user_id = ?", [req.user.id])
@@ -90,7 +90,7 @@ router.post('/logout', auth, async (req, res) => {
   }
 })
 
-// 3. API ดูข้อมูลและสถานะของผู้ใช้งานปัจจุบัน (Current User Profile)
+// 3. ดูข้อมูลส่วนตัว: ดูว่าใครกำลังใช้งานอยู่และมีสถานะอะไร
 router.get('/me', auth, async (req, res) => {
   try {
     const [statusRows] = await db.query("SELECT state FROM status WHERE user_id = ?", [req.user.id])

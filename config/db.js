@@ -1,6 +1,6 @@
 const mysql = require("mysql2/promise")
 
-// 1. ตั้งค่าการเชื่อมต่อฐานข้อมูล MySQL Connection Pool
+// 1. ตั้งค่าการเชื่อมต่อกับฐานข้อมูล MySQL
 const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
@@ -10,7 +10,7 @@ const dbConfig = {
 
 const db = mysql.createPool(dbConfig)
 
-// 2. ฟังก์ชันสร้างฐานข้อมูล ตาราง และข้อมูลผู้ใช้เริ่มต้น (พร้อมระบบ Retry อัตโนมัติเวลารอ DB บูต)
+// 2. สร้างฐานข้อมูล ตาราง และใส่ข้อมูลตั้งต้นให้อัตโนมัติ (ถ้าระบบยังไม่พร้อมจะลองใหม่เรื่อยๆ)
 const initDB = async (retries = 10, delayMs = 2000) => {
   for (let i = 1; i <= retries; i++) {
     try {

@@ -76,7 +76,7 @@ get_server_ip() {
 fn_quick_docker_caddy() {
   clear
 
-  # ตรวจสอบว่ามี Docker และ Docker Compose หรือไม่ ถ้ายังไม่มี ให้ติดตั้งให้อัตโนมัติทันที
+  # เช็คว่ามี Docker หรือยัง ถ้ายังไม่มีก็ติดตั้งให้เสร็จสรรพทันที
   if ! which docker &>/dev/null || ! docker compose version &>/dev/null; then
     systemctl stop podman.socket podman 2>/dev/null || true
     systemctl disable podman.socket podman 2>/dev/null || true
@@ -135,7 +135,7 @@ EOF
 
   cd "$SCRIPT_DIR"
   if [ -f "docker-compose.yml" ]; then
-    # ตรวจสอบ runner config ถ้าเป็นไฟล์ว่างให้ล้างออก
+    # เช็คไฟล์ตั้งค่า ถ้าเป็นไฟล์ว่างๆ ไม่มีอะไรให้ลบทิ้งไปก่อน
     if [ ! -s "./runner/config.toml" ]; then
       rm -f ./runner/config.toml &>/dev/null || true
     fi
@@ -187,7 +187,7 @@ EOF
     docker compose ps
   fi
 
-  # ตรวจสอบว่ามี GitLab รันอยู่หรือไม่ (ทั้งแบบ docker exec หรือ omnibus ในเครื่อง) แล้ว auto-reset root ทันที (Background ไม่ให้หน้าจอรอนาน)
+  # เช็คว่า GitLab ทำงานหรือยัง ถ้าพร้อมแล้วก็ตั้งรหัสผ่านแอดมิน (root) ให้เลยด้านหลัง ไม่ต้องรอนาน
   if docker ps 2>/dev/null | grep -q gitlab; then
     (
       docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/unlock_root.rb
@@ -363,7 +363,7 @@ fn_auto_push_gitlab_branches() {
   cd "$SCRIPT_DIR"
   git config http.sslVerify false
 
-  # Ensure GitLab Web service is ready before proceeding
+  # รอจนกว่าหน้าเว็บ GitLab จะเปิดขึ้นมาพร้อมใช้งานจริงๆ
   echo "[*] Checking if GitLab Web service is ready..."
   while ! curl -s -k -f "http://127.0.0.1:8080/users/sign_in" &>/dev/null; do
     echo "[*] Waiting for GitLab Rails to finish booting..."
@@ -371,7 +371,7 @@ fn_auto_push_gitlab_branches() {
   done
   echo "[✓] GitLab is ready!"
 
-  # Auto-create project on GitLab via API if it does not exist
+  # สร้างโปรเจกต์บน GitLab ให้อัตโนมัติถ้ายังไม่มี
   PROJECT_PATH=$(echo "$GITLAB_URL" | sed 's#^http://[^/]\+/##g' | sed 's#^https://[^/]\+/##g' | sed 's#\.git$##g')
   NAMESPACE_NAME=$(echo "$PROJECT_PATH" | cut -d'/' -f1)
   PROJECT_NAME=$(echo "$PROJECT_PATH" | cut -d'/' -f2)
@@ -393,13 +393,13 @@ fn_auto_push_gitlab_branches() {
     echo "[✓] Project created on GitLab!"
   fi
 
-  # ปลดล็อก Protected Branch บน GitLab ผ่าน API อย่างรวดเร็ว เพื่อให้ push main ได้
+  # ปลดล็อกสิทธิ์ เพื่อให้เราโยนโค้ดขึ้น branch main ได้ทันที
   curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
   curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://localhost:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
   docker exec -i gitlab gitlab-psql -d gitlabhq_production -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
   docker exec -i gitlab gitlab-psql -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
 
-  # ลบประวัติ git เดิม และล้างไฟล์ที่ไม่เกี่ยวข้อง โดยยังคงเก็บ setup.sh ไว้ใช้งานได้ตลอดเวลา
+  # ล้างไฟล์ขยะกับประวัติเก่าออกให้หมด เริ่มต้นใหม่แบบสะอาดๆ
   rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md 2>/dev/null || true
   grep -qxF "setup.sh" .gitignore 2>/dev/null || echo "setup.sh" >> .gitignore
 
@@ -408,55 +408,55 @@ fn_auto_push_gitlab_branches() {
   git config user.email "devops@mydomain.lab"
   git config http.sslVerify false
 
-  # สร้าง Git Flow History แบบกิ่งก้านสาขาสมบูรณ์แบบ (main <- devops, backend, frontend)
-  # 1. Base Commit บน main
+  # สร้างประวัติการส่งงานแยกเป็นกิ่งๆ ให้ครบตามโจทย์ (main <- devops, backend, frontend)
+  # 1. เริ่มต้นบันทึกไฟล์หลักลง main
   git add README.md .gitignore .dockerignore .gitlab-ci.yml 2>/dev/null || true
   git commit -m "feat: initialize project structure and rubric documentation" &>/dev/null || true
 
-  # 2. Branch: devops
+  # 2. แตกกิ่ง devops ทำงานส่วนระบบและเซิร์ฟเวอร์
   git checkout -b devops &>/dev/null
   git add docker-compose.yml Dockerfile Caddyfile .gitlab-ci.yml runner 2>/dev/null || true
   git commit -m "chore(devops): configure caddy reverse proxy, docker compose and ci pipeline" &>/dev/null || true
 
-  # 3. Branch: backend
+  # 3. แตกกิ่ง backend ทำงานส่วนหลังบ้านและฐานข้อมูล
   git checkout main &>/dev/null
   git checkout -b backend &>/dev/null
   git add index.js package.json package-lock.json config routes middlewares test.js uploads docs 2>/dev/null || true
   git commit -m "feat(backend): implement restful api, jwt auth and database connection" &>/dev/null || true
 
-  # 4. Branch: frontend
+  # 4. แตกกิ่ง frontend ทำงานส่วนหน้าบ้านหน้าเว็บ
   git checkout main &>/dev/null
   git checkout -b frontend &>/dev/null
   git add frontend 2>/dev/null || true
   git commit -m "feat(frontend): create user dashboard and authentication interface" &>/dev/null || true
 
-  # 5. Merge ทุก branches รวมเข้า main แบบมี Merge Commit กิ่งก้านสาขา
+  # 5. รวมงานทุกกิ่งกลับเข้ามาที่กิ่งหลัก (main) แบบเห็นรอยต่อชัดเจน
   git checkout main &>/dev/null
   git merge --no-ff devops -m "Merge branch 'devops' into main" &>/dev/null || true
   git merge --no-ff backend -m "Merge branch 'backend' into main" &>/dev/null || true
   git merge --no-ff frontend -m "Merge branch 'frontend' into main" &>/dev/null || true
 
-  # Add เก็บตกไฟล์ที่เหลือทั้งหมด
+  # เก็บตกไฟล์อื่นๆ ที่เหลือให้ครบหมด
   git add . &>/dev/null || true
   git commit -m "chore: finalize release build" &>/dev/null || true
 
   git remote remove gitlab 2>/dev/null || true
   git remote add gitlab "$AUTH_URL"
 
-  # Push main first so GitLab sets main as the default branch for the repository
+  # ดันกิ่งหลัก (main) ขึ้นก่อน เพื่อให้ GitLab ตั้งเป็นกิ่งเริ่มต้น
   git push -u gitlab main --force
   git push -u gitlab devops --force
   git push -u gitlab backend --force
   git push -u gitlab frontend --force
 
-  # Optional: Register GitLab Runner
+  # ถามความสมัครใจว่าต้องการผูกตัวรันงาน (GitLab Runner) เลยไหม
   read -p "Register GitLab Runner? [Y/n]: " WANT_RUNNER
   [ -z "$WANT_RUNNER" ] && WANT_RUNNER="y"
   if [ "$WANT_RUNNER" = "y" ] || [ "$WANT_RUNNER" = "Y" ]; then
     read -p "Runner Token (glrt-...) [Press Enter to auto-generate]: " USER_RUNNER_TOKEN
     START_TIME=$(date +%s)
     
-    # Ensure CI Job Token signing key is generated (Prevents HTTP 500 error on runner verify)
+    # เตรียมกุญแจความปลอดภัยล่วงหน้า ป้องกันระบบพังเวลาตรวจเช็คตัวรันงาน
     docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/ensure_signing_key.rb
 settings = ApplicationSetting.current
 if settings.ci_job_token_signing_key.blank?
@@ -483,16 +483,21 @@ EOF
     fi
 
     if [ -n "$USER_RUNNER_TOKEN" ]; then
-      echo "==> Registering GitLab Runner with token: $USER_RUNNER_TOKEN"
+      echo "==> กำลังผูกตัวรันงาน (GitLab Runner) ด้วย Token: $USER_RUNNER_TOKEN"
+      # 1. ปลุกให้ตัวรันงาน (gitlab-runner) ตื่นขึ้นมาพร้อมทำงานก่อน
       docker compose up -d --force-recreate gitlab-runner &>/dev/null || true
+
+      # 2. ลบของเก่าที่พังทิ้งไปก่อน ป้องกันของเก่ามาตีกับของใหม่
       docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
       rm -f ./runner/config.toml &>/dev/null || true
 
+      # 3. เช็คชื่อวงเน็ตเวิร์กที่เชื่อมต่อกันอยู่
       NETWORK_NAME=$(docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
       [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$SCRIPT_DIR")_default"
       [ -z "$NETWORK_NAME" ] && NETWORK_NAME="devops-tnk_default"
 
-      echo "[*] Connecting runner to GitLab via http://gitlab/ ..."
+      # 4. สั่งต่อตรงเข้าหา GitLab ข้างในเครื่องเลย (ห้ามใส่ 127.0.0.1 หรือ 8080 เพราะมันจะหากันไม่เจอ)
+      echo "[*] เชื่อมต่อ Runner หา GitLab ผ่าน http://gitlab/ บนเน็ตเวิร์ก: $NETWORK_NAME ..."
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
         --url "http://gitlab/" \
@@ -507,16 +512,20 @@ EOF
         --clone-url "http://gitlab/" \
         --description "docker-runner"
 
-      echo "[*] Activating runner & configuring organization and untagged jobs in database..."
+      # 5. เปิดสวิตช์ให้รับงานได้ทันที แก้ไขระบบให้พร้อมทำงานเลย ไม่ต้องรอตั้งค่าเพิ่ม
+      echo "[*] เปิดสวิตช์ให้ตัวรันงานพร้อมรับงานทันทีในระบบ..."
       docker exec -i gitlab gitlab-psql -c "UPDATE ci_runners SET organization_id = 1, active = true, run_untagged = true WHERE organization_id IS NULL OR run_untagged = false OR active = false;" &>/dev/null || true
 
-      echo "[*] Restarting gitlab-runner service..."
+      # 6. รีสตาร์ทตัวทำงาน 1 รอบ ให้มันเริ่มจำค่าใหม่แล้วพร้อมลุย
+      echo "[*] สั่งรีสตาร์ทตัวทำงาน 1 รอบ เพื่อโหลดค่าใหม่..."
       docker restart gitlab-runner &>/dev/null || true
 
       END_TIME=$(date +%s)
       ELAPSED=$((END_TIME - START_TIME))
-      echo "==> [✓] GitLab Runner successfully registered and online in ${ELAPSED} seconds!"
-      echo "==> Verifying runner status..."
+      echo "==> [✓] ผูก GitLab Runner สำเร็จ พร้อมทำงานแล้ว ใช้เวลาไปแค่ ${ELAPSED} วินาที!"
+
+      # 7. ตรวจสอบดูว่าตัวทำงานออนไลน์พร้อมรันงานแล้วหรือยัง
+      echo "==> กำลังตรวจสอบสถานะตัวทำงาน..."
       docker exec gitlab-runner gitlab-runner verify
     fi
   fi

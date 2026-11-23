@@ -3,20 +3,20 @@ const jwt = require("jsonwebtoken")
 const { JWT_SECRET } = require("./middlewares/auth.middleware")
 const userRoutes = require("./routes/user.routes")
 
-// 1. Unit Test: ทดสอบการลงนาม (Sign) และตรวจสอบ (Verify) JWT Token
+// 1. ทดสอบย่อย: เช็คว่าการสร้างและตรวจบัตรผ่าน (Token) ทำงานได้ถูกต้องไหม
 const token = jwt.sign({ id: 1, username: "admin", role: "admin" }, JWT_SECRET, { expiresIn: "1d" })
 const decoded = jwt.verify(token, JWT_SECRET)
 assert.strictEqual(decoded.username, "admin")
 assert.strictEqual(decoded.role, "admin")
 console.log("[PASS] Unit: JWT sign & verify")
 
-// 2. Integration Test: ทดสอบ Route ระบบจัดการผู้ใช้
+// 2. ทดสอบระบบรวม: เช็คเส้นทางดึงข้อมูลคนในระบบ
 const routes = userRoutes.stack.map(layer => layer.route?.path).filter(Boolean)
 assert.ok(routes.includes("/"), "GET / must exist")
 assert.ok(routes.includes("/:id"), "GET /:id must exist")
 console.log("[PASS] Integration: User routes mounted")
 
-// 3. E2E-001: ทดสอบกระบวนการเข้าสู่ระบบสำเร็จ (Login workflow)
+// 3. ทดสอบจริง 1: ลองล็อกอินเข้าสู่ระบบตั้งแต่ต้นจนจบ
 const loginPayload = { username: "admin", password: "admin" }
 assert.ok(loginPayload.username && loginPayload.password, "Step 2: กรอก username/password สำเร็จ")
 const authHeader = `Bearer ${token}`
@@ -25,7 +25,7 @@ const dashboardAccess = decoded && decoded.id === 1
 assert.strictEqual(dashboardAccess, true, "Step 4: ระบบพาไปหน้า Dashboard สำเร็จ")
 console.log("ผู้ใช้เข้าสู่ระบบสำเร็จ")
 
-// 4. E2E-002: ทดสอบกระบวนการส่งและบันทึกข้อมูลสำเร็จ (Data submission workflow)
+// 4. ทดสอบจริง 2: ลองส่งข้อมูลและบันทึกลงระบบ
 assert.strictEqual(decoded.role, "admin", "Step 1: ตรวจสอบสิทธิ์สำหรับเพิ่มข้อมูล")
 const formPayload = { username: "newuser", password: "1234", role: "readonly" }
 assert.ok(formPayload.username && formPayload.password, "Step 3: กรอกข้อมูลในฟอร์มครบถ้วน")
@@ -34,7 +34,7 @@ assert.strictEqual(saveResponse.status, 201, "Step 4: บันทึกข้�
 assert.strictEqual(saveResponse.message, "บันทึกข้อมูลสำเร็จ", "Step 5: ระบบแสดงข้อความ บันทึกข้อมูลสำเร็จ")
 console.log("ผู้ใช้ส่งข้อมูลสำเร็จ")
 
-// 5. E2E-003: ทดสอบการแนบไฟล์พร้อมเพิ่มข้อมูล และแก้ไขไฟล์แนบที่เกี่ยวข้องกับข้อมูล
+// 5. ทดสอบจริง 3: ลองแนบไฟล์พร้อมเพิ่มข้อมูล และลองเปลี่ยนไฟล์แนบเดิม
 const uploadPayload = {
   username: "user_with_file",
   password: "password123",

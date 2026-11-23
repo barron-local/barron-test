@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken")
 const JWT_SECRET = "TNK"
 
-// 1. Middleware ตรวจสอบ JWT Bearer Token และถอดรหัสข้อมูลผู้ใช้เก็บใน req.user
+// 1. ด่านตรวจคนเข้าเมือง: ตรวจบัตรผ่าน (Token) ก่อนว่าล็อกอินมาจริงไหม
 const auth = (req, res, next) => {
   try {
     const authHeader = req.headers['authorization']
@@ -35,7 +35,7 @@ const auth = (req, res, next) => {
   }
 }
 
-// 2. Middleware ตรวจสอบสิทธิ์เฉพาะผู้ดูแลระบบ (Admin Only)
+// 2. ด่านตรวจเฉพาะแอดมิน: คนธรรมดาห้ามผ่านเข้ามาเด็ดขาด
 const adminOnly = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {
     return res.status(403).json({
@@ -47,7 +47,7 @@ const adminOnly = (req, res, next) => {
   next()
 }
 
-// 3. Middleware ตรวจสอบสิทธิ์สำหรับผู้ที่แก้ไขข้อมูลได้ (Admin หรือ Editonly)
+// 3. ด่านตรวจคนมีสิทธิ์แก้ไข: ต้องเป็นแอดมินหรือคนที่ได้รับอนุญาตให้แก้เท่านั้น
 const canEdit = (req, res, next) => {
   if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'editonly')) {
     return res.status(403).json({

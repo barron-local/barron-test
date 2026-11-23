@@ -6,11 +6,11 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       const proto = window.location.protocol;
       const host = window.location.hostname;
-      // ถ้าเปิดผ่านโดเมน https://frontend.mydomain.lab ให้ยิงไปที่ https://backend.mydomain.lab
+      // ถ้าเข้าเว็บผ่านชื่อ frontend.mydomain.lab ให้ส่งข้อมูลไปหาหลังบ้าน backend.mydomain.lab
       if (host.includes('frontend.')) {
         return `${proto}//${host.replace('frontend.', 'backend.')}${path}`;
       }
-      // ถ้าเปิดผ่าน IP หรือชื่ออื่น
+      // ถ้าเข้าผ่านเลข IP หรือชื่ออื่น ให้ชี้ไปที่พอร์ต 5000 ของเครื่องนั้น
       if (proto === 'https:') {
         return `${proto}//${host}${path}`;
       }
@@ -19,7 +19,7 @@ export default function Home() {
     return `http://localhost:5000${path}`;
   };
 
-  // 1. State สำหรับระบบ Authentication, รายการข้อมูลผู้ใช้, ฟอร์มเพิ่ม/แก้ไข และการแจ้งเตือน
+  // 1. ตัวเก็บข้อมูลหน้าเว็บ: คนล็อกอิน, ตารางรายชื่อ, กล่องกรอกข้อมูล และข้อความเตือน
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [user, setUser] = useState(null);
@@ -33,7 +33,7 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState('readonly');
 
-  // State สำหรับกล่องแยกอัปโหลดไฟล์ (Admin และ Editonly แนบให้ตนเอง)
+  // ตัวเก็บข้อมูลสำหรับช่องอัปโหลดไฟล์ของตัวเอง
   const [standaloneFile, setStandaloneFile] = useState(null);
   const standaloneFileInputRef = useRef(null);
 
@@ -44,7 +44,7 @@ export default function Home() {
 
   const [msg, setMsg] = useState({ text: '', isError: false });
 
-  // 2. ฟังก์ชันจัดการข้อความแจ้งเตือน และแปลง Error Code จาก Backend
+  // 2. ตัวช่วยโชว์ข้อความแจ้งเตือนให้คนอ่านเข้าใจง่ายๆ เวลาทำอะไรสำเร็จหรือมีข้อผิดพลาด
   const handleBackendError = (statusCode, backendMessage) => {
     if (backendMessage) return backendMessage;
     if (statusCode === 400) return 'ข้อมูลที่ส่งไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง';
@@ -60,7 +60,7 @@ export default function Home() {
     setTimeout(() => setMsg({ text: '', isError: false }), 4500);
   };
 
-  // 3. ฟังก์ชันดึงรายการข้อมูลผู้ใช้ (รองรับ Search & Filter ตามระดับสิทธิ์)
+  // 3. ตัวดึงรายชื่อคนทั้งหมดมาโชว์ในตาราง (ค้นหาชื่อและเลือกดูตามสิทธิ์ได้)
   const fetchUsers = async (s = search, r = role, st = state) => {
     if (!user?.token) return;
     try {
@@ -106,7 +106,7 @@ export default function Home() {
     }
   }, [user]);
 
-  // 4. ฟังก์ชันเข้าสู่ระบบ (Login) และออกจากระบบ (Logout) ด้วย JWT
+  // 4. ปุ่มเข้าสู่ระบบ (ล็อกอิน) และปุ่มออกจากระบบ (ออกจากระบบ)
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -156,7 +156,7 @@ export default function Home() {
     }
   };
 
-  // 5. ฟังก์ชันเพิ่มผู้ใช้ใหม่ (เฉพาะ Admin)
+  // 5. ปุ่มเพิ่มคนใหม่เข้าสู่ระบบ (ทำได้เฉพาะแอดมินเท่านั้น)
   const handleCreate = async (e) => {
     e.preventDefault();
 
@@ -197,7 +197,7 @@ export default function Home() {
     }
   };
 
-  // 5.1 ฟังก์ชันแยกสำหรับอัปโหลดและแนบไฟล์ให้บัญชีตนเอง (เฉพาะ Admin และ Editonly)
+  // 5.1 ปุ่มแนบไฟล์ให้บัญชีตัวเอง (ทำได้เฉพาะแอดมินกับคนที่มีสิทธิ์แก้ไข)
   const handleStandaloneUpload = async (e) => {
     e.preventDefault();
 
@@ -230,7 +230,7 @@ export default function Home() {
     }
   };
 
-  // 6. ฟังก์ชันแก้ไขข้อมูลผู้ใช้และไฟล์แนบเดิม (Admin หรือ Editonly)
+  // 6. ปุ่มแก้ไขข้อมูลคนในระบบและเปลี่ยนไฟล์แนบ
   const handleEdit = async (id) => {
     if (!editName.trim()) {
       notify('ชื่อผู้ใช้ไม่สามารถเว้นว่างได้', true);
@@ -263,7 +263,7 @@ export default function Home() {
     }
   };
 
-  // 7. ฟังก์ชันลบข้อมูลผู้ใช้พร้อมกล่องยืนยัน (Confirmation Dialog)
+  // 7. ปุ่มลบคนออกจากระบบ พร้อมกล่องถามซ้ำเพื่อความแน่ใจ
   const handleDelete = async (id, targetUsername) => {
     const isConfirmed = window.confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลผู้ใช้ "${targetUsername}" ?\nการกระทำนี้ไม่สามารถย้อนกลับได้`);
     if (!isConfirmed) return;
@@ -289,7 +289,7 @@ export default function Home() {
   const isAdmin = user?.role === 'admin';
   const canEdit = user?.role === 'admin' || user?.role === 'editonly';
 
-  // หน้าจอที่ 1: เข้าสู่ระบบ (Login Screen)
+  // หน้าจอที่ 1: หน้าล็อกอินเข้าสู่ระบบ
   if (!user) {
     return (
       <div className="login-box card">
@@ -330,7 +330,7 @@ export default function Home() {
     );
   }
 
-  // หน้าจอที่ 2: ระบบบริหารจัดการผู้ใช้ (Dashboard)
+  // หน้าจอที่ 2: หน้าจัดการข้อมูลและรายชื่อผู้ใช้งาน
   return (
     <div className="container">
       <div className="card">
