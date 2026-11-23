@@ -354,8 +354,7 @@ fn_auto_push_gitlab_branches() {
   read -p "Username [root]: " GIT_USER
   [ -z "$GIT_USER" ] && GIT_USER="root"
 
-  read -s -p "Password [devops1234]: " GIT_PASS
-  echo ""
+  read -p "Password [devops1234]: " GIT_PASS
   [ -z "$GIT_PASS" ] && GIT_PASS="devops1234"
 
   AUTH_URL=$(echo "$GITLAB_URL" | sed "s#https://#https://${GIT_USER}:${GIT_PASS}@#g" | sed "s#http://#http://${GIT_USER}:${GIT_PASS}@#g")
