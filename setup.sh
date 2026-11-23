@@ -415,19 +415,52 @@ fn_auto_push_gitlab_branches() {
   git config user.email "devops@mydomain.lab"
   git config http.sslVerify false
 
+  # กำหนดข้อความ Commit ให้ดูเป็นธรรมชาติ สไตล์โปรแกรมเมอร์ทั่วไป (ไม่ดูเป็นทางการหรือเหมือน AI เขียน)
+  MSG_MAIN="init project"
+  MSG_DEVOPS="setup docker and caddy"
+  MSG_BACKEND="add backend api and auth"
+  MSG_FRONTEND="add frontend dashboard and login"
+  MSG_DEPLOY="deploy to production"
+
+  echo ""
+  echo -e "${CYAN}ข้อความ Commit เริ่มต้น (สไตล์ธรรมชาติ สั้นกระชับ):${NC}"
+  echo "  1) main     : $MSG_MAIN"
+  echo "  2) devops   : $MSG_DEVOPS"
+  echo "  3) backend  : $MSG_BACKEND"
+  echo "  4) frontend : $MSG_FRONTEND"
+  echo "  5) deploy   : $MSG_DEPLOY"
+  echo ""
+  read -p "ต้องการปรับแต่งข้อความ Commit เองไหม? (กด Enter เพื่อใช้ค่าเริ่มต้น) [y/N]: " EDIT_COMMITS_CHOICE
+  if [ "$EDIT_COMMITS_CHOICE" = "y" ] || [ "$EDIT_COMMITS_CHOICE" = "Y" ]; then
+    read -p "Commit main [$MSG_MAIN]: " USER_MSG_MAIN
+    [ -n "$USER_MSG_MAIN" ] && MSG_MAIN="$USER_MSG_MAIN"
+
+    read -p "Commit devops [$MSG_DEVOPS]: " USER_MSG_DEVOPS
+    [ -n "$USER_MSG_DEVOPS" ] && MSG_DEVOPS="$USER_MSG_DEVOPS"
+
+    read -p "Commit backend [$MSG_BACKEND]: " USER_MSG_BACKEND
+    [ -n "$USER_MSG_BACKEND" ] && MSG_BACKEND="$USER_MSG_BACKEND"
+
+    read -p "Commit frontend [$MSG_FRONTEND]: " USER_MSG_FRONTEND
+    [ -n "$USER_MSG_FRONTEND" ] && MSG_FRONTEND="$USER_MSG_FRONTEND"
+
+    read -p "Commit deploy [$MSG_DEPLOY]: " USER_MSG_DEPLOY
+    [ -n "$USER_MSG_DEPLOY" ] && MSG_DEPLOY="$USER_MSG_DEPLOY"
+  fi
+
   # สร้างประวัติการส่งงานแยกเป็นกิ่งๆ ให้ครบตามโจทย์ (main <- devops, backend, frontend)
   # 1. เริ่มต้นบันทึกไฟล์หลักลง main
   for item in README.md .gitignore .dockerignore .gitlab-ci.yml; do
     [ -e "$item" ] && git add "$item" 2>/dev/null || true
   done
-  git commit -m "feat: initialize project structure and documentation" &>/dev/null || true
+  git commit -m "$MSG_MAIN" &>/dev/null || true
 
   # 2. แตกกิ่ง devops ทำงานส่วนระบบและเซิร์ฟเวอร์
   git checkout -b devops &>/dev/null
   for item in docker-compose.yml Dockerfile Caddyfile .gitlab-ci.yml runner; do
     [ -e "$item" ] && git add "$item" 2>/dev/null || true
   done
-  git commit -m "chore(devops): configure caddy reverse proxy, docker compose and ci pipeline" &>/dev/null || true
+  git commit -m "$MSG_DEVOPS" &>/dev/null || true
 
   # 3. แตกกิ่ง backend ทำงานส่วนหลังบ้านและฐานข้อมูล
   git checkout main &>/dev/null
@@ -435,7 +468,7 @@ fn_auto_push_gitlab_branches() {
   for item in index.js package.json package-lock.json config routes middlewares test.js docs; do
     [ -e "$item" ] && git add "$item" 2>/dev/null || true
   done
-  git commit -m "feat(backend): implement restful api, jwt auth and database connection" &>/dev/null || true
+  git commit -m "$MSG_BACKEND" &>/dev/null || true
 
   # 4. แตกกิ่ง frontend ทำงานส่วนหน้าบ้านหน้าเว็บ
   git checkout main &>/dev/null
@@ -443,7 +476,7 @@ fn_auto_push_gitlab_branches() {
   for item in frontend; do
     [ -e "$item" ] && git add "$item" 2>/dev/null || true
   done
-  git commit -m "feat(frontend): create user dashboard and authentication interface" &>/dev/null || true
+  git commit -m "$MSG_FRONTEND" &>/dev/null || true
 
   # 5. รวมงานทุกกิ่งกลับเข้ามาที่กิ่งหลัก (main) แบบเห็นรอยต่อชัดเจน
   git checkout main &>/dev/null
@@ -451,18 +484,12 @@ fn_auto_push_gitlab_branches() {
   git merge --no-ff backend -m "Merge branch 'backend' into main" &>/dev/null || true
   git merge --no-ff frontend -m "Merge branch 'frontend' into main" &>/dev/null || true
 
-  # กำหนดข้อความ Commit สำหรับงานปล่อยระบบ (Deploy) กิ่ง main ได้อิสระ
-  echo ""
-  echo -e "${YELLOW}ระบุข้อความ Commit สำหรับการ Deploy ขึ้น GitLab (กด Enter เพื่อใช้ค่ามาตรฐาน):${NC}"
-  read -p "Commit message [chore: finalize release build]: " DEPLOY_COMMIT_MSG
-  [ -z "$DEPLOY_COMMIT_MSG" ] && DEPLOY_COMMIT_MSG="chore: finalize release build"
-
-  # เก็บตกไฟล์อื่นๆ และบันทึกข้อความ commit ที่ผู้ใช้กำหนด
+  # 6. เก็บตกไฟล์อื่นๆ และบันทึกข้อความ commit สำหรับ deploy
   git add . &>/dev/null || true
   if git status --porcelain | grep -q .; then
-    git commit -m "$DEPLOY_COMMIT_MSG" &>/dev/null || true
+    git commit -m "$MSG_DEPLOY" &>/dev/null || true
   else
-    git commit --allow-empty -m "$DEPLOY_COMMIT_MSG" &>/dev/null || true
+    git commit --allow-empty -m "$MSG_DEPLOY" &>/dev/null || true
   fi
 
   git remote remove gitlab 2>/dev/null || true
