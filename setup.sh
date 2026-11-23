@@ -451,10 +451,10 @@ fn_auto_push_gitlab_branches() {
       [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$SCRIPT_DIR")_default"
       [ -z "$NETWORK_NAME" ] && NETWORK_NAME="devops-tnk_default"
 
-      echo "[*] Connecting runner to GitLab via http://gitlab/ ..."
+      echo "[*] Connecting runner to GitLab via http://gitlab.mydomain.lab:8080/ ..."
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
-        --url "http://gitlab/" \
+        --url "http://gitlab.mydomain.lab:8080/" \
         --token "$USER_RUNNER_TOKEN" \
         --executor "docker" \
         --docker-image "docker:latest" \
@@ -463,7 +463,8 @@ fn_auto_push_gitlab_branches() {
         --docker-volumes "/cache" \
         --docker-network-mode "$NETWORK_NAME" \
         --docker-pull-policy "if-not-present" \
-        --clone-url "http://gitlab/" \
+        --clone-url "http://gitlab.mydomain.lab:8080/" \
+        --extra-hosts "gitlab.mydomain.lab:127.0.0.1" \
         --description "docker-runner"
 
       echo "[*] Activating runner & configuring untagged jobs..."
