@@ -436,9 +436,19 @@ fn_auto_push_gitlab_branches() {
   git merge --no-ff backend -m "Merge branch 'backend' into main" &>/dev/null || true
   git merge --no-ff frontend -m "Merge branch 'frontend' into main" &>/dev/null || true
 
-  # เก็บตกไฟล์อื่นๆ ที่เหลือให้ครบหมด
+  # กำหนดข้อความ Commit สำหรับงานปล่อยระบบ (Deploy) กิ่ง main ได้อิสระ
+  echo ""
+  echo -e "${YELLOW}ระบุข้อความ Commit สำหรับการ Deploy ขึ้น GitLab (กด Enter เพื่อใช้ค่ามาตรฐาน):${NC}"
+  read -p "Commit message [chore: finalize release build]: " DEPLOY_COMMIT_MSG
+  [ -z "$DEPLOY_COMMIT_MSG" ] && DEPLOY_COMMIT_MSG="chore: finalize release build"
+
+  # เก็บตกไฟล์อื่นๆ และบันทึกข้อความ commit ที่ผู้ใช้กำหนด
   git add . &>/dev/null || true
-  git commit -m "chore: finalize release build" &>/dev/null || true
+  if git status --porcelain | grep -q .; then
+    git commit -m "$DEPLOY_COMMIT_MSG" &>/dev/null || true
+  else
+    git commit --allow-empty -m "$DEPLOY_COMMIT_MSG" &>/dev/null || true
+  fi
 
   git remote remove gitlab 2>/dev/null || true
   git remote add gitlab "$AUTH_URL"
