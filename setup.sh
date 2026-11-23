@@ -348,8 +348,8 @@ gitlab-rails runner /tmp/unlock_root.rb
 
 fn_auto_push_gitlab_branches() {
   clear
-  read -p "Repository URL [http://gitlab.mydomain.lab:8080/root/devops-tnk.git]: " GITLAB_URL
-  [ -z "$GITLAB_URL" ] && GITLAB_URL="http://gitlab.mydomain.lab:8080/root/devops-tnk.git"
+  read -p "Repository URL [http://gitlab.mydomain.lab:8080/tnk/devops-tnk.git]: " GITLAB_URL
+  [ -z "$GITLAB_URL" ] && GITLAB_URL="http://gitlab.mydomain.lab:8080/tnk/devops-tnk.git"
 
   read -p "Username [root]: " GIT_USER
   [ -z "$GIT_USER" ] && GIT_USER="root"
