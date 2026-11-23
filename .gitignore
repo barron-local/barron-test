@@ -4,3 +4,5 @@ project.zip
 uploads/
 *.exe
 *.vsix
+runner/config.toml
+runner/.runner_system_id

@@ -400,7 +400,7 @@ fn_auto_push_gitlab_branches() {
   docker exec -i gitlab gitlab-psql -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
 
   # ล้างไฟล์ขยะกับประวัติเก่าออกให้หมด เริ่มต้นใหม่แบบสะอาดๆ
-  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md 2>/dev/null || true
+  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md runner/config.toml 2>/dev/null || true
   grep -qxF "setup.sh" .gitignore 2>/dev/null || echo "setup.sh" >> .gitignore
 
   git init -b main &>/dev/null || git init &>/dev/null
