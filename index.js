@@ -18,6 +18,17 @@ app.get(['/docs', '/api/docs'], (req, res) => {
   res.sendFile(path.join(__dirname, 'docs', 'index.html'))
 })
 
+app.get('/', (req, res) => {
+  if (req.accepts('html')) {
+    return res.redirect('/docs')
+  }
+  return res.status(200).json({
+    status: "success",
+    message: "DevOps TNK Backend RESTful API Server",
+    docs: "/docs"
+  })
+})
+
 app.use('/api', require('./routes/auth.routes'))
 app.use('/api/users', require('./routes/user.routes'))
 
