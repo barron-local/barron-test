@@ -106,7 +106,7 @@ fn_quick_docker_caddy() {
     echo -e "${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
   fi
 
-  apt install -y ufw &>/dev/null || true
+  apt install -y ufw curl &>/dev/null || true
   ufw allow 22/tcp &>/dev/null || true
   ufw allow 80/tcp &>/dev/null || true
   ufw allow 443/tcp &>/dev/null || true
@@ -135,8 +135,10 @@ EOF
 
   cd "$SCRIPT_DIR"
   if [ -f "docker-compose.yml" ]; then
-    # ล้าง runner config เก่าที่อาจจะค้างจากการลงทะเบียนรอบก่อนๆ เพื่อให้ register ใหม่ได้เสมอ
-    rm -f ./runner/config.toml &>/dev/null || true
+    # ตรวจสอบ runner config ถ้าเป็นไฟล์ว่างให้ล้างออก
+    if [ ! -s "./runner/config.toml" ]; then
+      rm -f ./runner/config.toml &>/dev/null || true
+    fi
     docker compose up -d
 
     for i in {1..15}; do
@@ -204,6 +206,11 @@ end
 user.onboarding_in_progress = false if user.respond_to?(:onboarding_in_progress=)
 user.role_and_interests_already_set = true if user.respond_to?(:role_and_interests_already_set=)
 user.save!(validate: false)
+
+settings = ApplicationSetting.current
+if settings.ci_job_token_signing_key.blank?
+  settings.update!(ci_job_token_signing_key: OpenSSL::PKey::RSA.new(2048).to_pem)
+end
 EOF
 gitlab-rails runner /tmp/unlock_root.rb &>/dev/null
 " &>/dev/null
@@ -217,7 +224,7 @@ gitlab-rails runner /tmp/unlock_root.rb &>/dev/null
 
 fn_interactive_firewall() {
   clear
-  apt install -y ufw &>/dev/null || true
+  apt install -y ufw curl &>/dev/null || true
   ufw status numbered
   echo ""
   echo "1) allow"
@@ -329,6 +336,11 @@ end
 user.onboarding_in_progress = false if user.respond_to?(:onboarding_in_progress=)
 user.role_and_interests_already_set = true if user.respond_to?(:role_and_interests_already_set=)
 user.save!(validate: false)
+
+settings = ApplicationSetting.current
+if settings.ci_job_token_signing_key.blank?
+  settings.update!(ci_job_token_signing_key: OpenSSL::PKey::RSA.new(2048).to_pem)
+end
 EOF
 gitlab-rails runner /tmp/unlock_root.rb
 "
@@ -336,8 +348,8 @@ gitlab-rails runner /tmp/unlock_root.rb
 
 fn_auto_push_gitlab_branches() {
   clear
-  read -p "Repository URL [http://gitlab.mydomain.lab/tnk/devops-tnk.git]: " GITLAB_URL
-  [ -z "$GITLAB_URL" ] && GITLAB_URL="http://gitlab.mydomain.lab/tnk/devops-tnk.git"
+  read -p "Repository URL [http://gitlab.mydomain.lab:8080/root/devops-tnk.git]: " GITLAB_URL
+  [ -z "$GITLAB_URL" ] && GITLAB_URL="http://gitlab.mydomain.lab:8080/root/devops-tnk.git"
 
   read -p "Username [root]: " GIT_USER
   [ -z "$GIT_USER" ] && GIT_USER="root"
@@ -438,12 +450,39 @@ fn_auto_push_gitlab_branches() {
   git push -u gitlab frontend --force
 
   # Optional: Register GitLab Runner
-  read -p "Register GitLab Runner? [y/N]: " WANT_RUNNER
+  read -p "Register GitLab Runner? [Y/n]: " WANT_RUNNER
+  [ -z "$WANT_RUNNER" ] && WANT_RUNNER="y"
   if [ "$WANT_RUNNER" = "y" ] || [ "$WANT_RUNNER" = "Y" ]; then
-    echo "Tip: On GitLab Web UI, please check [x] 'Run untagged jobs' before creating runner"
-    read -p "Runner Token (glrt-...): " USER_RUNNER_TOKEN
+    read -p "Runner Token (glrt-...) [Press Enter to auto-generate]: " USER_RUNNER_TOKEN
+    START_TIME=$(date +%s)
+    
+    # Ensure CI Job Token signing key is generated (Prevents HTTP 500 error on runner verify)
+    docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/ensure_signing_key.rb
+settings = ApplicationSetting.current
+if settings.ci_job_token_signing_key.blank?
+  settings.update!(ci_job_token_signing_key: OpenSSL::PKey::RSA.new(2048).to_pem)
+end
+EOF
+gitlab-rails runner /tmp/ensure_signing_key.rb &>/dev/null || true
+" &>/dev/null || true
+
+    if [ -z "$USER_RUNNER_TOKEN" ]; then
+      echo "[*] Auto-generating GitLab Runner token via GitLab Rails..."
+      docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/gen_runner_token.rb
+user = User.find_by_username('root')
+response = Ci::Runners::CreateRunnerService.new(user: user, params: { runner_type: 'instance_type', description: 'docker-runner', run_untagged: true }).execute
+if response.success?
+  puts response.payload[:runner].token
+end
+EOF
+" &>/dev/null || true
+      USER_RUNNER_TOKEN=$(docker exec -i gitlab gitlab-rails runner /tmp/gen_runner_token.rb 2>/dev/null | grep -E '^glrt-' | head -n 1)
+      if [ -n "$USER_RUNNER_TOKEN" ]; then
+        echo "[✓] Generated GitLab Runner Token: $USER_RUNNER_TOKEN"
+      fi
+    fi
+
     if [ -n "$USER_RUNNER_TOKEN" ]; then
-      START_TIME=$(date +%s)
       echo "==> Registering GitLab Runner with token: $USER_RUNNER_TOKEN"
       docker compose up -d --force-recreate gitlab-runner &>/dev/null || true
       docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
@@ -453,10 +492,10 @@ fn_auto_push_gitlab_branches() {
       [ -z "$NETWORK_NAME" ] && NETWORK_NAME="$(basename "$SCRIPT_DIR")_default"
       [ -z "$NETWORK_NAME" ] && NETWORK_NAME="devops-tnk_default"
 
-      echo "[*] Connecting runner to GitLab via http://gitlab.mydomain.lab:8080/ ..."
+      echo "[*] Connecting runner to GitLab via http://gitlab/ ..."
       docker exec -i gitlab-runner gitlab-runner register \
         --non-interactive \
-        --url "http://gitlab.mydomain.lab:8080/" \
+        --url "http://gitlab/" \
         --token "$USER_RUNNER_TOKEN" \
         --executor "docker" \
         --docker-image "docker:latest" \
@@ -465,8 +504,7 @@ fn_auto_push_gitlab_branches() {
         --docker-volumes "/cache" \
         --docker-network-mode "$NETWORK_NAME" \
         --docker-pull-policy "if-not-present" \
-        --clone-url "http://gitlab.mydomain.lab:8080/" \
-        --docker-extra-hosts "gitlab.mydomain.lab:127.0.0.1" \
+        --clone-url "http://gitlab/" \
         --description "docker-runner"
 
       echo "[*] Activating runner & configuring untagged jobs..."
