@@ -36,6 +36,8 @@ deploy-job:
       if docker ps --format '{{.Names}}' | grep -q "^frontend$"; then
         echo "[*] Updating frontend source files into container..."
         docker cp ./frontend/src/. frontend:/app/src/
+        [ -d ./frontend/public ] && docker cp ./frontend/public/. frontend:/app/public/ 2>/dev/null || true
+        [ -f ./frontend/next.config.mjs ] && docker cp ./frontend/next.config.mjs frontend:/app/next.config.mjs 2>/dev/null || true
         [ -f ./frontend/package.json ] && docker cp ./frontend/package.json frontend:/app/package.json 2>/dev/null || true
         echo "[*] Rebuilding Next.js frontend production bundle..."
         docker exec -i frontend npm run build
