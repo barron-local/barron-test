@@ -384,6 +384,8 @@ fn_auto_push_gitlab_branches() {
   # ปลดล็อก Protected Branch บน GitLab ผ่าน API อย่างรวดเร็ว เพื่อให้ push main ได้
   curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://127.0.0.1:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
   curl -s -k -X DELETE -u "${GIT_USER}:${GIT_PASS}" "http://localhost:8080/api/v4/projects/${ENCODED_PATH}/protected_branches/main" &>/dev/null || true
+  docker exec -i gitlab gitlab-psql -d gitlabhq_production -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
+  docker exec -i gitlab gitlab-psql -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
 
   # ลบประวัติ git เดิม และล้างไฟล์ที่ไม่เกี่ยวข้อง โดยยังคงเก็บ setup.sh ไว้ใช้งานได้ตลอดเวลา
   rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md 2>/dev/null || true
@@ -464,7 +466,7 @@ fn_auto_push_gitlab_branches() {
         --docker-network-mode "$NETWORK_NAME" \
         --docker-pull-policy "if-not-present" \
         --clone-url "http://gitlab.mydomain.lab:8080/" \
-        --extra-hosts "gitlab.mydomain.lab:127.0.0.1" \
+        --docker-extra-hosts "gitlab.mydomain.lab:127.0.0.1" \
         --description "docker-runner"
 
       echo "[*] Activating runner & configuring untagged jobs..."
