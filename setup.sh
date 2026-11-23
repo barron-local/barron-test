@@ -399,9 +399,15 @@ fn_auto_push_gitlab_branches() {
   docker exec -i gitlab gitlab-psql -d gitlabhq_production -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
   docker exec -i gitlab gitlab-psql -c "DELETE FROM protected_branches WHERE name = 'main';" &>/dev/null || true
 
-  # ล้างไฟล์ขยะกับประวัติเก่าออกให้หมด เริ่มต้นใหม่แบบสะอาดๆ
-  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md runner/config.toml 2>/dev/null || true
+  # ล้างประวัติ Git เดิม และลบไฟล์คู่มือ/สคริปต์ตรวจคะแนน/ส่วนขยายทั้งหมดออกเงียบๆ เหลือเฉพาะ README.md
+  rm -rf .git barron-devops-guide-extension *.vsix check_rubric.sh runner/config.toml 2>/dev/null || true
+  rm -f CLASS_DIAGRAM.md DEVELOPMENT_STEP_BY_STEP.md SYSTEM_ARCHITECTURE.md MASTER_GUIDE.md POSTMAN_GUIDE.md docs/postman/POSTMAN_GUIDE.md 2>/dev/null || true
+  find . -maxdepth 3 -name "*.md" ! -name "README.md" ! -path "*/node_modules/*" ! -path "*/.next/*" -exec rm -f {} + 2>/dev/null || true
+
+  # ดักไม่ให้ setup.sh หรือ check_rubric.sh หลุดเข้าไปในประวัติ Git เด็ดขาด
   grep -qxF "setup.sh" .gitignore 2>/dev/null || echo "setup.sh" >> .gitignore
+  grep -qxF "check_rubric.sh" .gitignore 2>/dev/null || echo "check_rubric.sh" >> .gitignore
+  grep -qxF "*.vsix" .gitignore 2>/dev/null || echo "*.vsix" >> .gitignore
 
   git init -b main &>/dev/null || git init &>/dev/null
   git config user.name "devops"
@@ -411,7 +417,7 @@ fn_auto_push_gitlab_branches() {
   # สร้างประวัติการส่งงานแยกเป็นกิ่งๆ ให้ครบตามโจทย์ (main <- devops, backend, frontend)
   # 1. เริ่มต้นบันทึกไฟล์หลักลง main
   git add README.md .gitignore .dockerignore .gitlab-ci.yml 2>/dev/null || true
-  git commit -m "feat: initialize project structure and rubric documentation" &>/dev/null || true
+  git commit -m "feat: initialize project structure and documentation" &>/dev/null || true
 
   # 2. แตกกิ่ง devops ทำงานส่วนระบบและเซิร์ฟเวอร์
   git checkout -b devops &>/dev/null
@@ -538,6 +544,15 @@ EOF
       echo "==> กำลังตรวจสอบสถานะตัวทำงาน..."
       docker exec gitlab-runner gitlab-runner verify
     fi
+  fi
+
+  # 8. ถามลบสคริปต์ช่วยเหลือและไฟล์ setup.sh ออกจากเครื่องเพื่อความสะอาดและปลอดภัย
+  echo ""
+  read -p "ต้องการลบ setup.sh และสคริปต์ช่วยเหลือออกจากเครื่องเลยไหม (แนะนำก่อนส่งงาน)? [y/N]: " CLEANUP_SELF
+  if [ "$CLEANUP_SELF" = "y" ] || [ "$CLEANUP_SELF" = "Y" ]; then
+    echo "[*] กำลังลบ setup.sh และสคริปต์ช่วยเหลือออกจากเครื่อง..."
+    rm -f "$SCRIPT_DIR/setup.sh" "$SCRIPT_DIR/register_runner.sh" 2>/dev/null || true
+    echo "[✓] ลบสคริปต์ออกจากเครื่องเรียบร้อย สะอาด 100%!"
   fi
 }
 
