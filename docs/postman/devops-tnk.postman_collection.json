@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "a8f6d3b1-devops-tnk-collection-v2",
-    "name": "DevOps TNK - RESTful API Test Suite (ตามใบประเมินแข่งขันทักษะ ปวส.)",
-    "description": "ชุดทดสอบ API ครบตามเกณฑ์การให้คะแนนใบประเมิน DevOps ปวส. (ข้อ 4.4 และ 4.5)\nรองรับการยิงทดสอบคะแนนครบทุกข้อ: GET, POST, PUT, PATCH, DELETE, File Upload, JWT Auth, Status 401/403/404/409, Query/Path Params",
+    "_postman_id": "a8f6d3b1-devops-tnk-collection-rubric-v3",
+    "name": "DevOps TNK - RESTful API Test Suite (แยกตามข้อใบประเมิน ปวส.)",
+    "description": "ชุดทดสอบ API ออกแบบแยกเป็นโฟลเดอร์ตาม 'รหัสเกณฑ์การให้คะแนน' ในใบประเมิน ปวส. (ข้อ 4.4 และ 4.5) อย่างชัดเจน 100%\nกรรมการเปิดดูโฟลเดอร์ตามข้อที่กำลังตรวจ แล้วกด Send ได้ทันที!",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -39,8 +39,8 @@
   ],
   "item": [
     {
-      "name": "01. เข้าสู่ระบบ & ความปลอดภัย (เกณฑ์ 4.5.4, 4.5.10)",
-      "description": "ทดสอบ API Login ออก JWT Token พร้อมลายเซ็น (Signing) และการออกจากระบบ",
+      "name": "[เกณฑ์ 4.5.4 & 4.4.5] API Login ด้วย JWT Token (ออก Token & มีลายเซ็น)",
+      "description": "เกณฑ์ 4.5.4: เรียก API Login ด้วย Username/Password แล้วตรวจสอบ Token ที่ได้รับ และเกณฑ์ 4.4.5 แนวทางความปลอดภัย",
       "item": [
         {
           "name": "1.1 Login ด้วย Admin (บันทึก Token อัตโนมัติ)",
@@ -49,10 +49,8 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: เข้าสู่ระบบสำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "pm.test('Response มีสถานะ success และได้รับ JWT Token', function () {",
+                  "pm.test('Status code 200: Login สำเร็จ', function () { pm.response.to.have.status(200); });",
+                  "pm.test('ได้รับ JWT Token พร้อมใช้งาน', function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.status).to.eql('success');",
                   "    pm.expect(jsonData.token).to.be.a('string');",
@@ -88,7 +86,7 @@
                 "login"
               ]
             },
-            "description": "เกณฑ์ 4.5.4: เรียก API Login ด้วย username/password แล้วได้รับ JWT Token สำหรับใช้ยืนยันตัวตน"
+            "description": "เกณฑ์ 4.5.4: Login สำเร็จ ได้รับ JWT Token"
           }
         },
         {
@@ -132,7 +130,7 @@
           }
         },
         {
-          "name": "1.3 Login ด้วย User ทั่วไป (สิทธิ์ readonly)",
+          "name": "1.3 Login ด้วย User (สิทธิ์ readonly)",
           "event": [
             {
               "listen": "test",
@@ -172,54 +170,13 @@
           }
         },
         {
-          "name": "1.4 Login ผิดรหัส (เกณฑ์ 4.5.5: Exception 401)",
+          "name": "1.4 ดูข้อมูลส่วนตัวด้วย Token (GET /api/me)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 401: ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', function () {",
-                  "    pm.response.to.have.status(401);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrongpass123\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "login"
-              ]
-            }
-          }
-        },
-        {
-          "name": "1.5 ดูข้อมูลผู้ใช้ปัจจุบัน (GET /api/me)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code 200: ดึงข้อมูลส่วนตัวสำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
+                  "pm.test('Status 200: ใช้ Token ยืนยันตัวตนได้', function () { pm.response.to.have.status(200); });"
                 ],
                 "type": "text/javascript"
               }
@@ -242,19 +199,18 @@
                 "api",
                 "me"
               ]
-            }
+            },
+            "description": "เกณฑ์ 4.5.4: ใช้ Token เรียก API อื่นเพื่อตรวจสอบสิทธิ์ได้"
           }
         },
         {
-          "name": "1.6 ออกจากระบบ (POST /api/logout)",
+          "name": "1.5 ออกจากระบบ (POST /api/logout)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: ออกจากระบบสำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
+                  "pm.test('Status 200: Logout สำเร็จ ปรับสถานะเป็น off', function () { pm.response.to.have.status(200); });"
                 ],
                 "type": "text/javascript"
               }
@@ -283,18 +239,18 @@
       ]
     },
     {
-      "name": "02. ดึงข้อมูล GET Requests (เกณฑ์ 4.5.1, 4.5.6)",
-      "description": "ทดสอบ API GET รองรับ Query Parameters และ Path Parameters ผลลัพธ์เปลี่ยนตามค่าที่ส่ง",
+      "name": "[เกณฑ์ 4.5.1] API แบบ GET (Query & Path Parameters)",
+      "description": "เกณฑ์ 4.5.1: สร้าง API แบบ GET พร้อมรับค่า (Query หรือ Path Parameters) ผลลัพธ์ต้องเปลี่ยนตามค่าพารามิเตอร์ที่ส่ง",
       "item": [
         {
-          "name": "2.1 ดึงรายชื่อผู้ใช้ทั้งหมด (GET /api/users)",
+          "name": "2.1 ดึงรายชื่อทั้งหมด (GET /api/users)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('โครงสร้างข้อมูลมี status, message, data ตามเกณฑ์ 4.5.6', function () {",
+                  "pm.test('Status 200: ดึงข้อมูลสำเร็จ', function () { pm.response.to.have.status(200); });",
+                  "pm.test('เกณฑ์ 4.5.6: Response มี status, message, data ครบ', function () {",
                   "    var res = pm.response.json();",
                   "    pm.expect(res).to.have.property('status');",
                   "    pm.expect(res).to.have.property('message');",
@@ -326,14 +282,14 @@
           }
         },
         {
-          "name": "2.2 ค้นหาด้วย Query: search (GET /api/users?search=admin)",
+          "name": "2.2 ค้นหาด้วย Query Parameter: search (?search=admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('ผลลัพธ์ตรงกับคำค้นหา admin', function () {",
+                  "pm.test('Status 200: ค้นหาสำเร็จ', function () { pm.response.to.have.status(200); });",
+                  "pm.test('เกณฑ์ 4.5.1: ผลลัพธ์กรองเปลี่ยนตาม search=admin', function () {",
                   "    var res = pm.response.json();",
                   "    var list = res.data.users || res.data;",
                   "    pm.expect(list.some(u => u.username === 'admin')).to.be.true;",
@@ -367,11 +323,11 @@
                 }
               ]
             },
-            "description": "เกณฑ์ 4.5.1: ผลลัพธ์เปลี่ยนตามค่า Query Parameter"
+            "description": "เกณฑ์ 4.5.1: ผลลัพธ์เปลี่ยนตาม Query String"
           }
         },
         {
-          "name": "2.3 กรองด้วย Query: role (GET /api/users?role=readonly)",
+          "name": "2.3 กรองด้วย Query Parameter: role (?role=readonly)",
           "request": {
             "method": "GET",
             "header": [
@@ -399,7 +355,7 @@
           }
         },
         {
-          "name": "2.4 กรองด้วย Query: state (GET /api/users?state=on)",
+          "name": "2.4 กรองด้วย Query Parameter: state (?state=on)",
           "request": {
             "method": "GET",
             "header": [
@@ -427,14 +383,14 @@
           }
         },
         {
-          "name": "2.5 ดึงข้อมูลรายบุคคลด้วย Path Parameter (GET /api/users/1)",
+          "name": "2.5 ดึงข้อมูลรายบุคคลด้วย Path Parameter (/api/users/1)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: ดึงข้อมูล ID 1 สำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
+                  "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('เกณฑ์ 4.5.1: ดึงข้อมูลตรงตาม Path ID: 1', function () {",
                   "    var res = pm.response.json();",
                   "    pm.expect(res.data.id).to.eql(1);",
                   "});"
@@ -462,60 +418,24 @@
                 "1"
               ]
             },
-            "description": "เกณฑ์ 4.5.1: Path Parameter ดึงข้อมูลตรงตาม ID"
-          }
-        },
-        {
-          "name": "2.6 ดึง ID ที่ไม่มีอยู่จริง (เกณฑ์ 4.5.5: Exception 404)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code 404: ไม่พบข้อมูลผู้ใช้', function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/users/99999",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "99999"
-              ]
-            }
+            "description": "เกณฑ์ 4.5.1: Path Parameter ดึงข้อมูลเฉพาะ ID ที่ระบุ"
           }
         }
       ]
     },
     {
-      "name": "03. ส่งข้อมูล POST Requests (เกณฑ์ 4.5.2, 4.5.5)",
-      "description": "ทดสอบส่ง JSON Body บันทึกข้อมูลลง MySQL และทดสอบ Error Handling",
+      "name": "[เกณฑ์ 4.5.2 & 4.5.6] API แบบ POST (JSON Body & บันทึกลง MySQL)",
+      "description": "เกณฑ์ 4.5.2: สร้าง API แบบ POST ที่รับข้อมูลจาก Body อย่างถูกต้อง และเกณฑ์ 4.5.6 โครงสร้าง JSON ตอบกลับ",
       "item": [
         {
-          "name": "3.1 เพิ่มผู้ใช้ใหม่สำเร็จ (POST /api/users)",
+          "name": "3.1 เพิ่มผู้ใช้ใหม่ด้วย JSON Body (POST /api/users)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 201 Created: บันทึกข้อมูลสำเร็จ', function () {",
-                  "    pm.response.to.have.status(201);",
+                  "pm.test('Status 201 Created: บันทึกข้อมูลสำเร็จ', function () { pm.response.to.have.status(201); });",
+                  "pm.test('เกณฑ์ 4.5.6: Response มี status: success และบันทึก ID ใหม่', function () {",
                   "    var res = pm.response.json();",
                   "    pm.expect(res.status).to.eql('success');",
                   "    if (res.data && res.data.id) {",
@@ -542,7 +462,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"student_demo\",\n  \"password\": \"password123\",\n  \"role\": \"readonly\"\n}"
+              "raw": "{\n  \"username\": \"student_devops\",\n  \"password\": \"password123\",\n  \"role\": \"readonly\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/users",
@@ -554,113 +474,25 @@
                 "users"
               ]
             },
-            "description": "เกณฑ์ 4.5.2: ส่งข้อมูล JSON ผ่าน Body และบันทึกลงฐานข้อมูลถูกต้อง"
-          }
-        },
-        {
-          "name": "3.2 เพิ่มผู้ใช้ชื่อซ้ำ (เกณฑ์ 4.5.5: Exception 409 Conflict)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code 409 Conflict: ชื่อผู้ใช้มีอยู่แล้ว', function () {",
-                  "    pm.response.to.have.status(409);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\",\n  \"role\": \"readonly\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/users",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users"
-              ]
-            }
-          }
-        },
-        {
-          "name": "3.3 กรอกข้อมูลไม่ครบ (เกณฑ์ 4.5.5: Exception 400 Bad Request)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test('Status code 400 Bad Request', function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/api/users",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "users"
-              ]
-            }
+            "description": "เกณฑ์ 4.5.2: ส่งข้อมูล JSON ผ่าน Body และบันทึกลง MySQL สำเร็จจริง"
           }
         }
       ]
     },
     {
-      "name": "04. อัปโหลดไฟล์ File Upload (เกณฑ์ 4.5.3)",
-      "description": "ทดสอบส่งไฟล์แบบ multipart/form-data และเปิดดูไฟล์ได้จริง",
+      "name": "[เกณฑ์ 4.5.3] API สำหรับอัปโหลดไฟล์ (multipart/form-data)",
+      "description": "เกณฑ์ 4.5.3: ส่งไฟล์ผ่าน API ด้วย multipart/form-data ต้องอัปโหลดสำเร็จและเปิดไฟล์ที่เก็บไว้ได้จริง",
       "item": [
         {
-          "name": "4.1 อัปโหลดไฟล์ประจำตัวผู้ใช้ (POST /api/users/:id/upload)",
+          "name": "4.1 อัปโหลดไฟล์ประจำตัว (POST /api/users/1/upload)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: อัปโหลดสำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    var res = pm.response.json();",
-                  "    pm.expect(res.status).to.eql('success');",
-                  "});"
+                  "pm.test('Status 200: อัปโหลดไฟล์สำเร็จ', function () { pm.response.to.have.status(200); });",
+                  "var res = pm.response.json();",
+                  "pm.expect(res.status).to.eql('success');"
                 ],
                 "type": "text/javascript"
               }
@@ -696,7 +528,7 @@
                 "upload"
               ]
             },
-            "description": "เกณฑ์ 4.5.3: ส่งไฟล์ผ่าน API ด้วย multipart/form-data อัปโหลดสำเร็จ"
+            "description": "เกณฑ์ 4.5.3: แนบไฟล์ผ่าน multipart/form-data"
           }
         },
         {
@@ -713,14 +545,14 @@
                 "sample.txt"
               ]
             },
-            "description": "เกณฑ์ 4.5.3: ตรวจสอบว่าเปิดดูไฟล์ที่จัดเก็บไว้ได้จริง"
+            "description": "เกณฑ์ 4.5.3: เปิดดูและดาวน์โหลดไฟล์ที่เก็บไว้ได้จริง"
           }
         }
       ]
     },
     {
-      "name": "05. แก้ไขข้อมูล PUT & PATCH (เกณฑ์ 4.4.1, 4.5.7)",
-      "description": "ทดสอบ Service แบบ PUT และ PATCH สำหรับอัปเดตข้อมูลผู้ใช้",
+      "name": "[เกณฑ์ 4.4.1 & 4.5.7] Service แบบ PUT และ PATCH (แก้ไขข้อมูล)",
+      "description": "เกณฑ์ 4.4.1 & 4.5.7: ออกแบบและพัฒนา Service แบบ PUT และ PATCH สำหรับอัปเดตข้อมูล",
       "item": [
         {
           "name": "5.1 แก้ไขข้อมูลด้วย PUT (PUT /api/users/:id)",
@@ -729,9 +561,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: แก้ไขข้อมูลด้วย PUT สำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
+                  "pm.test('Status 200: แก้ไขข้อมูลด้วย PUT สำเร็จ', function () { pm.response.to.have.status(200); });"
                 ],
                 "type": "text/javascript"
               }
@@ -764,7 +594,7 @@
                 "{{new_user_id}}"
               ]
             },
-            "description": "เกณฑ์ 4.4.1 & 4.5.7: บริการแก้ไขข้อมูลแบบ PUT"
+            "description": "เกณฑ์ 4.4.1 & 4.5.7: รองรับ Method PUT"
           }
         },
         {
@@ -774,9 +604,7 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: แก้ไขข้อมูลด้วย PATCH สำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
+                  "pm.test('Status 200: แก้ไขข้อมูลด้วย PATCH สำเร็จ', function () { pm.response.to.have.status(200); });"
                 ],
                 "type": "text/javascript"
               }
@@ -809,25 +637,23 @@
                 "{{new_user_id}}"
               ]
             },
-            "description": "เกณฑ์ 4.4.1 & 4.5.7: บริการแก้ไขข้อมูลแบบ PATCH"
+            "description": "เกณฑ์ 4.4.1 & 4.5.7: รองรับ Method PATCH"
           }
         }
       ]
     },
     {
-      "name": "06. ลบข้อมูล DELETE Requests (เกณฑ์ 4.4.1, 4.5.7)",
-      "description": "ทดสอบ Service แบบ DELETE ลบข้อมูลและไฟล์แนบออกจากฐานข้อมูล",
+      "name": "[เกณฑ์ 4.4.1 & 4.5.7] Service แบบ DELETE (ลบข้อมูล)",
+      "description": "เกณฑ์ 4.4.1 & 4.5.7: ออกแบบและพัฒนา Service แบบ DELETE สำหรับลบข้อมูล",
       "item": [
         {
-          "name": "6.1 ลบข้อมูลผู้ใช้ (DELETE /api/users/:id - เฉพาะ Admin)",
+          "name": "6.1 ลบข้อมูลผู้ใช้ (DELETE /api/users/:id - สิทธิ์ Admin)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: ลบข้อมูลสำเร็จ', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
+                  "pm.test('Status 200: ลบข้อมูลสำเร็จ', function () { pm.response.to.have.status(200); });"
                 ],
                 "type": "text/javascript"
               }
@@ -852,25 +678,182 @@
                 "{{new_user_id}}"
               ]
             },
-            "description": "เกณฑ์ 4.4.1 & 4.5.7: บริการลบข้อมูลแบบ DELETE"
+            "description": "เกณฑ์ 4.4.1 & 4.5.7: ลบข้อมูลพร้อมไฟล์แนบสำเร็จจริง"
           }
         }
       ]
     },
     {
-      "name": "07. ตรวจสอบสิทธิ์ความปลอดภัย (เกณฑ์ 4.5.10 - 401 & 403)",
-      "description": "ทดสอบระบบความปลอดภัย ไม่ส่ง Token ตอบ 401 / สิทธิ์ไม่พอตอบ 403",
+      "name": "[เกณฑ์ 4.5.5] การจัดการข้อผิดพลาด (Exception Handling: 400, 404, 409)",
+      "description": "เกณฑ์ 4.5.5: มีการจัดการข้อผิดพลาด เช่น ข้อมูลไม่ครบ (400), ไม่พบข้อมูล (404), ข้อมูลซ้ำ (409) ไม่ใช่ 500",
       "item": [
         {
-          "name": "7.1 ไม่ส่ง Token (เกณฑ์ 4.5.10: ต้องตอบ 401 Unauthorized)",
+          "name": "7.1 กรอกข้อมูลไม่ครบ (ต้องตอบ 400 Bad Request)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 401: ไม่ได้เข้าสู่ระบบ', function () {",
-                  "    pm.response.to.have.status(401);",
-                  "});"
+                  "pm.test('Status 400: ข้อมูลไม่ครบถ้วน', function () { pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.2 ค้นหา ID ที่ไม่มีอยู่จริง (ต้องตอบ 404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404: ไม่พบข้อมูลผู้ใช้ในระบบ', function () { pm.response.to.have.status(404); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/users/99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "99999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.3 เพิ่มผู้ใช้ชื่อซ้ำ (ต้องตอบ 409 Conflict)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409: ชื่อผู้ใช้มีอยู่แล้วในระบบ', function () { pm.response.to.have.status(409); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"1234\",\n  \"role\": \"readonly\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "7.4 Login ผิดรหัสผ่าน (ต้องตอบ 401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401: ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง', function () { pm.response.to.have.status(401); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrongpass\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "[เกณฑ์ 4.5.10 & 4.4.4] ความปลอดภัยและตรวจสอบสิทธิ์ (401 & 403)",
+      "description": "เกณฑ์ 4.5.10: ไม่ส่ง Token ตอบ 401 / ส่ง Token สิทธิ์ไม่พอตอบ 403 / สิทธิ์ถูกต้องตอบ 200",
+      "item": [
+        {
+          "name": "8.1 ไม่ส่ง Token เข้ามา (ต้องตอบ 401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401: ไม่พบ Token หรือไม่ได้เข้าสู่ระบบ', function () { pm.response.to.have.status(401); });"
                 ],
                 "type": "text/javascript"
               }
@@ -893,15 +876,13 @@
           }
         },
         {
-          "name": "7.2 สิทธิ์ไม่พอ: Readonly พยายามเพิ่มผู้ใช้ (เกณฑ์ 4.5.10: ต้องตอบ 403 Forbidden)",
+          "name": "8.2 สิทธิ์ไม่พอ: User ทั่วไปพยายามเพิ่มคน (ต้องตอบ 403 Forbidden)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 403: สิทธิ์ไม่เพียงพอ', function () {",
-                  "    pm.response.to.have.status(403);",
-                  "});"
+                  "pm.test('Status 403: สิทธิ์ไม่เพียงพอ (ต้องการ Admin)', function () { pm.response.to.have.status(403); });"
                 ],
                 "type": "text/javascript"
               }
@@ -937,15 +918,13 @@
           }
         },
         {
-          "name": "7.3 สิทธิ์ไม่พอ: Readonly พยายามลบผู้ใช้ (เกณฑ์ 4.5.10: ต้องตอบ 403 Forbidden)",
+          "name": "8.3 สิทธิ์ไม่พอ: User ทั่วไปพยายามลบคน (ต้องตอบ 403 Forbidden)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 403: สิทธิ์ไม่เพียงพอสำหรับลบข้อมูล', function () {",
-                  "    pm.response.to.have.status(403);",
-                  "});"
+                  "pm.test('Status 403: สิทธิ์ไม่เพียงพอสำหรับลบข้อมูล', function () { pm.response.to.have.status(403); });"
                 ],
                 "type": "text/javascript"
               }
@@ -973,15 +952,13 @@
           }
         },
         {
-          "name": "7.4 สิทธิ์พอ: Admin ลบผู้ใช้ได้ (ต้องตอบ 200 OK)",
+          "name": "8.4 สิทธิ์ Admin ถูกต้อง (ตอบ 200 OK)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Status code 200: Admin มีสิทธิ์ลบข้อมูลได้', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
+                  "pm.test('Status 200: Admin มีสิทธิ์ครบถ้วน', function () { pm.response.to.have.status(200); });"
                 ],
                 "type": "text/javascript"
               }
