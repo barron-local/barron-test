@@ -326,6 +326,16 @@ export default function Home() {
             เข้าสู่ระบบ
           </button>
         </form>
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <a
+            href="/docs"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: '#4f46e5', textDecoration: 'none', fontSize: '13px', fontWeight: 500 }}
+          >
+            📚 ดูเอกสาร API Specification (/docs)
+          </a>
+        </div>
       </div>
     );
   }
@@ -342,9 +352,20 @@ export default function Home() {
               ระดับสิทธิ์: <b className={isAdmin ? 'role-admin' : (canEdit ? 'role-editonly' : 'role-readonly')}>{user.role}</b>
             </small>
           </div>
-          <button onClick={() => handleLogout(false)} className="btn-danger">
-            ออกจากระบบ (Logout)
-          </button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <a
+              href="/docs"
+              target="_blank"
+              rel="noreferrer"
+              className="btn-outline"
+              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', padding: '8px 14px' }}
+            >
+              📚 เอกสาร API (/docs)
+            </a>
+            <button onClick={() => handleLogout(false)} className="btn-danger">
+              ออกจากระบบ (Logout)
+            </button>
+          </div>
         </div>
 
         {msg.text && (

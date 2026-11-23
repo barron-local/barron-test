@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DevOps TNK - API Documentation (Swagger UI)</title>
+  <title>DevOps TNK - API Documentation (Swagger UI 100% Offline)</title>
   <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
   <link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32" />
   <link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16" />
   <style>
     html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
     *, *:before, *:after { box-sizing: inherit; }
-    body { margin: 0; background: #fafafa; }
+    body { margin: 0; background: #fafafa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     .topbar { background-color: #1b1b1b !important; }
   </style>
 </head>
@@ -19,16 +19,428 @@
   <script src="./swagger-ui-bundle.js" charset="UTF-8"></script>
   <script src="./swagger-ui-standalone-preset.js" charset="UTF-8"></script>
   <script>
+    // Embedded Specification: ทำงานได้ 100% แบบ Offline แม้ไม่มีอินเทอร์เน็ต
+    const embeddedSwaggerSpec = {
+  "openapi": "3.0.0",
+  "info": {
+    "title": "DevOps TNK API Documentation",
+    "description": "API Specification สำหรับระบบจัดการผู้ใช้และสถานะการทำงาน (DevOps TNK Application) ตามเกณฑ์การแข่งขันข้อ 4.4",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://backend.mydomain.lab",
+      "description": "Production Backend Reverse Proxy Server"
+    },
+    {
+      "url": "http://localhost:5000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin"
+          },
+          "password": {
+            "type": "string",
+            "example": "password"
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password",
+          "role"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "somchai"
+          },
+          "password": {
+            "type": "string",
+            "example": "1234"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "editor",
+              "readonly"
+            ],
+            "example": "editor"
+          }
+        }
+      },
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "message": {
+            "type": "string",
+            "example": "ดำเนินการสำเร็จ"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "เข้าสู่ระบบ (Login)",
+        "description": "ตรวจสอบชื่อผู้ใช้และรหัสผ่าน พร้อมบันทึกลงตาราง log และอัปเดตสถานะ status เป็น on",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "เข้าสู่ระบบสำเร็จ พร้อมส่งคืน JWT Token"
+          },
+          "400": {
+            "description": "ข้อมูลไม่ครบถ้วน"
+          },
+          "401": {
+            "description": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"
+          }
+        }
+      }
+    },
+    "/api/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "ออกจากระบบ (Logout)",
+        "description": "ออกจากระบบและปรับสถานะในตาราง status ของผู้ใช้เป็น off",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ออกจากระบบสำเร็จ"
+          },
+          "401": {
+            "description": "Token ไม่ถูกต้อง หรือหมดอายุ"
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "ดูข้อมูลผู้ใช้งานปัจจุบัน (Current User Profile)",
+        "description": "ดึงข้อมูล ID, Username, Role, สถานะปัจจุบัน และเวลาที่ล็อกอินล่าสุด",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ดึงข้อมูลสำเร็จ"
+          },
+          "401": {
+            "description": "Token ไม่ถูกต้อง"
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "ดึงรายชื่อผู้ใช้ทั้งหมด (List Users)",
+        "description": "รองรับการค้นหา (Search), การกรองตามสิทธิ์ (role, state) และการแบ่งหน้า (Pagination)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "ค้นหาด้วยชื่อผู้ใช้",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "กรองตามสิทธิ์ (admin, editor, readonly)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "description": "กรองตามสถานะ (on, off)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "หมายเลขหน้า (Default: 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "จำนวนรายการต่อหน้า (Default: 10)",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ดึงรายการสำเร็จ"
+          },
+          "401": {
+            "description": "ไม่ได้ระบุ Token"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "เพิ่มผู้ใช้ใหม่ (Create User)",
+        "description": "สร้างบัญชีผู้ใช้งานใหม่ลงในฐานข้อมูล (เฉพาะผู้ดูแลระบบ Role: admin เท่านั้น)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "สร้างผู้ใช้สำเร็จ"
+          },
+          "400": {
+            "description": "ข้อมูลไม่ถูกต้องหรือชื่อผู้ใช้ซ้ำ"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์ดำเนินการ (Admin Only)"
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "ดึงข้อมูลผู้ใช้รายบุคคล (Get User by ID)",
+        "description": "ดึงข้อมูลของผู้ใช้ตาม ID ที่ระบุ",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "พบข้อมูลผู้ใช้"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้งาน"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "ลบผู้ใช้ (Delete User)",
+        "description": "ลบบัญชีผู้ใช้และข้อมูลที่เกี่ยวข้อง (Admin Only)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ลบผู้ใช้สำเร็จ"
+          },
+          "403": {
+            "description": "ไม่มีสิทธิ์ลบ"
+          },
+          "404": {
+            "description": "ไม่พบผู้ใช้ที่ต้องการลบ"
+          }
+        }
+      }
+    },
+    "/api/users/{id}/upload": {
+      "post": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "อัปโหลดไฟล์ประจำตัวผู้ใช้ (Upload User File)",
+        "description": "อัปโหลดไฟล์เอกสาร/รูปภาพแนบเข้ากับข้อมูลผู้ใช้งาน (Multipart/form-data)",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "User ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "อัปโหลดไฟล์สำเร็จ"
+          },
+          "400": {
+            "description": "ไม่ได้แนบไฟล์"
+          }
+        }
+      }
+    },
+    "/uploads/{filename}": {
+      "get": {
+        "tags": [
+          "Files"
+        ],
+        "summary": "ดาวน์โหลด/เปิดดูไฟล์ที่อัปโหลด (View Uploaded File)",
+        "description": "เข้าถึงไฟล์รูปภาพหรือเอกสารที่ถูกอัปโหลดไว้",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "description": "ชื่อไฟล์",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "คืนค่าไฟล์"
+          },
+          "404": {
+            "description": "ไม่พบไฟล์"
+          }
+        }
+      }
+    }
+  }
+};
+
     window.onload = function() {
+      const basePath = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
       window.ui = SwaggerUIBundle({
-        url: "./swagger.json",
+        spec: embeddedSwaggerSpec,
+        url: basePath + 'swagger.json',
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [
           SwaggerUIBundle.presets.apis,
           SwaggerUIStandalonePreset
         ],
-        layout: "StandaloneLayout"
+        layout: 'StandaloneLayout'
       });
     };
   </script>
