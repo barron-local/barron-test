@@ -430,12 +430,11 @@
 };
 
     window.onload = function() {
-      const basePath = window.location.pathname.endsWith('/') ? window.location.pathname : window.location.pathname + '/';
       window.ui = SwaggerUIBundle({
         spec: embeddedSwaggerSpec,
-        url: basePath + 'swagger.json',
         dom_id: '#swagger-ui',
         deepLinking: true,
+        validatorUrl: null, // ปิดการเรียก validator.swagger.io เพื่อรองรับการใช้งาน Offline 100%
         presets: [
           SwaggerUIBundle.presets.apis,
           SwaggerUIStandalonePreset
