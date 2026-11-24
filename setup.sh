@@ -118,49 +118,8 @@ fn_quick_docker_caddy() {
   ufw allow 53 &>/dev/null || true
   ufw --force enable &>/dev/null || true
 
-  mkdir -p /opt/dns-server/named-conf
-  cat << EOF > /opt/dns-server/named-conf/named.conf
-acl "trusted_clients" { 192.168.0.0/16; 172.16.0.0/12; 10.0.0.0/8; localhost; };
-options {
-    directory "/var/cache/bind";
-    allow-query { trusted_clients; };
-    recursion yes;
-    forwarders { 8.8.8.8; 1.1.1.1; };
-    listen-on { any; };
-    listen-on-v6 { any; };
-};
-
-zone "group3.vec" {
-    type master;
-    file "/etc/bind/db.group3.vec";
-};
-EOF
-
-  cat << EOF > /opt/dns-server/named-conf/db.group3.vec
-\$TTL    60
-@       IN      SOA     ns.group3.vec. admin.group3.vec. (
-                              1         ; Serial
-                         604800         ; Refresh
-                          86400         ; Retry
-                        2419200         ; Expire
-                          86400 )       ; Negative Cache TTL
-;
-@       IN      NS      ns.group3.vec.
-ns      IN      A       ${SERVER_IP}
-@       IN      A       ${SERVER_IP}
-frontend IN     A       ${SERVER_IP}
-backend  IN     A       ${SERVER_IP}
-gitlab   IN     A       ${SERVER_IP}
-registry IN     A       ${SERVER_IP}
-app      IN     A       ${SERVER_IP}
-*        IN     A       ${SERVER_IP}
-EOF
-
-  docker rm -f dns-server &>/dev/null || true
-  docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest &>/dev/null || true
-
   cd "$SCRIPT_DIR"
-  if [ -f "docker-compose.yml" ]; then
+  if [ -f "docker-compose.yaml" ] || [ -f "docker-compose.yml" ]; then
     # เช็คไฟล์ตั้งค่า ถ้าเป็นไฟล์ว่างๆ ไม่มีอะไรให้ลบทิ้งไปก่อน
     if [ ! -s "./runner/config.toml" ]; then
       rm -f ./runner/config.toml &>/dev/null || true
@@ -661,6 +620,90 @@ fn_register_gitlab_runner_standalone() {
   fi
 }
 
+fn_setup_dns_server() {
+  clear
+  local SERVER_IP=$(get_server_ip)
+  echo "==> กำลังตั้งค่า DNS Server (BIND9) สำหรับโดเมน .group3.vec บนพอร์ต 53..."
+  
+  ufw allow 53 &>/dev/null || true
+  mkdir -p /opt/dns-server/named-conf
+  
+  cat << EOF > /opt/dns-server/named-conf/named.conf
+acl "trusted_clients" { 192.168.0.0/16; 172.16.0.0/12; 10.0.0.0/8; localhost; };
+options {
+    directory "/var/cache/bind";
+    allow-query { trusted_clients; };
+    recursion yes;
+    forwarders { 8.8.8.8; 1.1.1.1; };
+    listen-on { any; };
+    listen-on-v6 { any; };
+};
+
+zone "group3.vec" {
+    type master;
+    file "/etc/bind/db.group3.vec";
+};
+EOF
+
+  cat << EOF > /opt/dns-server/named-conf/db.group3.vec
+\$TTL    60
+@       IN      SOA     ns.group3.vec. admin.group3.vec. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                          86400 )       ; Negative Cache TTL
+;
+@       IN      NS      ns.group3.vec.
+ns      IN      A       ${SERVER_IP}
+@       IN      A       ${SERVER_IP}
+frontend IN     A       ${SERVER_IP}
+backend  IN     A       ${SERVER_IP}
+gitlab   IN     A       ${SERVER_IP}
+registry IN     A       ${SERVER_IP}
+app      IN     A       ${SERVER_IP}
+*        IN     A       ${SERVER_IP}
+EOF
+
+  docker rm -f dns-server &>/dev/null || true
+  docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest &>/dev/null || true
+  
+  echo ""
+  echo "==> [✓] DNS Server รันสำเร็จบนพอร์ต 53 เรียบร้อยแล้ว!"
+  echo "ทดสอบจากเครื่องลูกข่าย (Windows/Client) ด้วยคำสั่ง:"
+  echo "  nslookup frontend.group3.vec ${SERVER_IP}"
+}
+
+fn_setup_dhcp_snooping_helper() {
+  clear
+  echo "==> ตัวช่วยสร้างคำสั่งตั้งค่า DHCP Snooping บน Switch (Cisco)"
+  echo "--------------------------------------------------------"
+  read -p "สายแลนที่ต่อกับ DHCP Server เสียบอยู่ที่ช่องเบอร์อะไรบน Switch? (เช่น 1 หรือ 24) [1]: " PORT_NUM
+  [ -z "$PORT_NUM" ] && PORT_NUM="1"
+
+  read -p "หมายเลข VLAN ที่ต้องการเปิด Snooping? [10,20]: " VLANS
+  [ -z "$VLANS" ] && VLANS="10,20"
+
+  echo ""
+  echo "========================================================"
+  echo " ก๊อปปี้บล็อกคำสั่งนี้ไปวางในโหมด config ของ Switch ได้เลย:"
+  echo "========================================================"
+  echo "enable"
+  echo "configure terminal"
+  echo "ip dhcp snooping"
+  echo "ip dhcp snooping vlan ${VLANS}"
+  echo "no ip dhcp snooping information option"
+  echo "interface GigabitEthernet 0/${PORT_NUM}"
+  echo " ip dhcp snooping trust"
+  echo " exit"
+  echo "exit"
+  echo "write memory"
+  echo "========================================================"
+  echo "คำสั่งที่กรรมการใช้ตรวจ:"
+  echo "  show ip dhcp snooping"
+  echo ""
+}
+
 clear
 echo "0) deploy stack"
 echo "1) firewall"
@@ -671,6 +714,8 @@ echo "5) reset gitlab"
 echo "6) push gitlab branches"
 echo "7) disk cleanup"
 echo "8) register gitlab runner"
+echo "9) setup dns server (bind9 port 53)"
+echo "10) dhcp snooping config helper"
 read -p "Select [0]: " USER_CHOICE
 
 if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ]; then
@@ -687,4 +732,6 @@ case $USER_CHOICE in
   6) fn_auto_push_gitlab_branches ;;
   7) fn_cleanup_disk_space ;;
   8) fn_register_gitlab_runner_standalone ;;
+  9) fn_setup_dns_server ;;
+  10) fn_setup_dhcp_snooping_helper ;;
 esac
