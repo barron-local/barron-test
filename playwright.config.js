@@ -11,19 +11,18 @@ module.exports = defineConfig({
   expect: {
     timeout: 5000,
   },
-  fullyParallel: false, // รันเรียงทีละข้อตามลำดับ Workflow E2E
+  fullyParallel: false, // รันเรียงทีละข้อตามลำดับ
   workers: 1,
-  reporter: 'list',
+  reporter: [
+    ['line']
+  ],
   use: {
-    // กำหนด URL ของหน้าเว็บ (รองรับทั้ง localhost และโดเมน)
     baseURL: process.env.BASE_URL || 'https://frontend.mydomain.lab',
-    headless: false, // เปิดหน้าต่าง Chrome ให้กรรมการเห็นตอนทดสอบ (ปรับเป็น true ได้)
-    screenshot: 'on', // ถ่ายภาพหน้าจอทุกขั้นตอนเก็บเป็นหลักฐาน
+    headless: false,
+    screenshot: 'on',
     video: 'off',
-    ignoreHTTPSErrors: true, // ข้ามแจ้งเตือน Self-signed certificate (ถ้ามี)
-    // ใช้ Google Chrome ที่อยู่ในเครื่อง
+    ignoreHTTPSErrors: true,
     channel: 'chrome',
-    // ชะลอความเร็วแต่ละ action (1 วินาที) ให้กรรมการและเรามองทันอย่างชัดเจน
     launchOptions: {
       slowMo: 1000,
     },
