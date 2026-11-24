@@ -1,9 +1,12 @@
 node_modules/
 .next/
-project.zip
+out/
+build/
+dist/
 uploads/
-*.exe
-*.vsix
+*.log
+.env
+.env.local
 runner/config.toml
 runner/.runner_system_id
 playwright-report/
