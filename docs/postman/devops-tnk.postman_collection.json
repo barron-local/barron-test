@@ -26,7 +26,7 @@
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/login",
+              "raw": "https://backend.group3.vec/api/login",
               "host": [
                 "backend",
                 "mydomain",
@@ -56,7 +56,7 @@
               "raw": "{\n  \"username\": \"editor\",\n  \"password\": \"editor\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/login",
+              "raw": "https://backend.group3.vec/api/login",
               "host": [
                 "backend",
                 "mydomain",
@@ -85,7 +85,7 @@
               "raw": "{\n  \"username\": \"user\",\n  \"password\": \"user\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/login",
+              "raw": "https://backend.group3.vec/api/login",
               "host": [
                 "backend",
                 "mydomain",
@@ -110,7 +110,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/me",
+              "raw": "https://backend.group3.vec/api/me",
               "host": [
                 "backend",
                 "mydomain",
@@ -136,7 +136,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/logout",
+              "raw": "https://backend.group3.vec/api/logout",
               "host": [
                 "backend",
                 "mydomain",
@@ -167,7 +167,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",
@@ -192,7 +192,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users?search=admin",
+              "raw": "https://backend.group3.vec/api/users?search=admin",
               "host": [
                 "backend",
                 "mydomain",
@@ -224,7 +224,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users?role=readonly",
+              "raw": "https://backend.group3.vec/api/users?role=readonly",
               "host": [
                 "backend",
                 "mydomain",
@@ -255,7 +255,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users?state=on",
+              "raw": "https://backend.group3.vec/api/users?state=on",
               "host": [
                 "backend",
                 "mydomain",
@@ -286,7 +286,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/1",
+              "raw": "https://backend.group3.vec/api/users/1",
               "host": [
                 "backend",
                 "mydomain",
@@ -327,7 +327,7 @@
               "raw": "{\n  \"username\": \"student_devops\",\n  \"password\": \"password123\",\n  \"role\": \"readonly\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",
@@ -369,7 +369,7 @@
               ]
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/1/upload",
+              "raw": "https://backend.group3.vec/api/users/1/upload",
               "host": [
                 "backend",
                 "mydomain",
@@ -391,7 +391,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "https://backend.mydomain.lab/uploads/sample.txt",
+              "raw": "https://backend.group3.vec/uploads/sample.txt",
               "host": [
                 "backend",
                 "mydomain",
@@ -431,7 +431,7 @@
               "raw": "{\n  \"username\": \"student_updated\",\n  \"role\": \"editonly\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/4",
+              "raw": "https://backend.group3.vec/api/users/4",
               "host": [
                 "backend",
                 "mydomain",
@@ -466,7 +466,7 @@
               "raw": "{\n  \"username\": \"student_patched\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/4",
+              "raw": "https://backend.group3.vec/api/users/4",
               "host": [
                 "backend",
                 "mydomain",
@@ -499,7 +499,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/4",
+              "raw": "https://backend.group3.vec/api/users/4",
               "host": [
                 "backend",
                 "mydomain",
@@ -540,7 +540,7 @@
               "raw": "{\n  \"username\": \"\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",
@@ -565,7 +565,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/99999",
+              "raw": "https://backend.group3.vec/api/users/99999",
               "host": [
                 "backend",
                 "mydomain",
@@ -599,7 +599,7 @@
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"1234\",\n  \"role\": \"readonly\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",
@@ -628,7 +628,7 @@
               "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrongpass\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/login",
+              "raw": "https://backend.group3.vec/api/login",
               "host": [
                 "backend",
                 "mydomain",
@@ -654,7 +654,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",
@@ -688,7 +688,7 @@
               "raw": "{\n  \"username\": \"hacker\",\n  \"password\": \"123\",\n  \"role\": \"admin\"\n}"
             },
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",
@@ -714,7 +714,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users/2",
+              "raw": "https://backend.group3.vec/api/users/2",
               "host": [
                 "backend",
                 "mydomain",
@@ -740,7 +740,7 @@
               }
             ],
             "url": {
-              "raw": "https://backend.mydomain.lab/api/users",
+              "raw": "https://backend.group3.vec/api/users",
               "host": [
                 "backend",
                 "mydomain",

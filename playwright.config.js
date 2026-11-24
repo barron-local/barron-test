@@ -17,7 +17,7 @@ module.exports = defineConfig({
     ['./e2e/reporter.js']
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'https://frontend.mydomain.lab',
+    baseURL: process.env.BASE_URL || 'https://frontend.group3.vec',
     headless: false,
     screenshot: 'off',
     video: 'off',

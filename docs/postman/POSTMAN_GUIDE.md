@@ -10,10 +10,10 @@
 
 | สภาพแวดล้อมที่ทดสอบ | Environment ที่ต้องเลือก | URL ที่ระบบใช้ยิง | เหมาะกับตอนไหน |
 | :--- | :--- | :--- | :--- |
-| **ยิงผ่าน Domain (แนะนำ)** | **`DevOps TNK (Domain: backend.mydomain.lab)`** | **`https://backend.mydomain.lab`** | ยิงจากเครื่อง Windows หรือเมื่อมีการตั้งค่า `/etc/hosts` ชี้โดเมนแล้ว (ผ่าน Caddy HTTPS ปลอดภัย 100%) |
+| **ยิงผ่าน Domain (แนะนำ)** | **`DevOps TNK (Domain: backend.group3.vec)`** | **`https://backend.group3.vec`** | ยิงจากเครื่อง Windows หรือเมื่อมีการตั้งค่า `/etc/hosts` ชี้โดเมนแล้ว (ผ่าน Caddy HTTPS ปลอดภัย 100%) |
 | **ยิงตรงเข้าเครื่อง (Local/IP)** | **`DevOps TNK (Localhost: 5000)`** | **`http://localhost:5000`**<br>*(หรือ `http://<IP_UBUNTU>:5000`)* | ยิงตรงเข้าเครื่อง Ubuntu เซิร์ฟเวอร์ หรือกรณีที่เครื่อง Windows ยังไม่ได้แก้ไฟล์ hosts |
 
-> 💡 **สรุป:** ถ้าอยู่บนเครื่อง Windows ที่แก้ `/etc/hosts` เรียบร้อยแล้ว ให้เลือก **`https://backend.mydomain.lab`** ได้เลยครับ! หรือถ้าอยากยิงตรงเข้าพอร์ตหลังบ้าน ก็แค่สลับไปเลือก **`Localhost: 5000`** ได้ใน 1 คลิก!
+> 💡 **สรุป:** ถ้าอยู่บนเครื่อง Windows ที่แก้ `/etc/hosts` เรียบร้อยแล้ว ให้เลือก **`https://backend.group3.vec`** ได้เลยครับ! หรือถ้าอยากยิงตรงเข้าพอร์ตหลังบ้าน ก็แค่สลับไปเลือก **`Localhost: 5000`** ได้ใน 1 คลิก!
 
 ---
 
@@ -23,10 +23,10 @@
 1. **เปิดโปรแกรม Postman** ➔ กดปุ่ม **`Import`** (อยู่มุมบนซ้าย)
 2. **ลากไฟล์ทั้ง 3 ไฟล์ต่อไปนี้เข้าไปใน Postman:**
    - `devops-tnk.postman_collection.json` (ชุดคำสั่งยิง API ที่แยกตามรหัสเกณฑ์ข้อสอบ)
-   - `devops-tnk-domain.postman_environment.json` (ตัวแปรสำหรับโดเมน `https://backend.mydomain.lab`)
+   - `devops-tnk-domain.postman_environment.json` (ตัวแปรสำหรับโดเมน `https://backend.group3.vec`)
    - `devops-tnk-localhost.postman_environment.json` (ตัวแปรสำหรับ `http://localhost:5000`)
 3. **เลือก Environment ที่มุมขวาบน:**
-   - เลือก **`DevOps TNK (Domain: backend.mydomain.lab)`**
+   - เลือก **`DevOps TNK (Domain: backend.group3.vec)`**
 
 > ⚡ **จุดเด่นพิเศษ (Auto Token):**  
 > เมื่อกดยิงข้อ **`1.1 Login ด้วย Admin`** ระบบจะมีสคริปต์อัตโนมัติคอยดูด Token ไปเก็บในตัวแปร `{{token}}` และ `{{admin_token}}` ให้ทันที ทำให้ข้ออื่นๆ หลังจากนั้นสามารถกด **Send** ยิงได้ทันทีโดยไม่ต้องเสียเวลาก๊อปปี้ Token มาแปะเอง!

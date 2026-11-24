@@ -6,7 +6,7 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       const proto = window.location.protocol;
       const host = window.location.hostname;
-      // ถ้าเข้าเว็บผ่านชื่อ frontend.mydomain.lab ให้ส่งข้อมูลไปหาหลังบ้าน backend.mydomain.lab
+      // ถ้าเข้าเว็บผ่านชื่อ frontend.group3.vec ให้ส่งข้อมูลไปหาหลังบ้าน backend.group3.vec
       if (host.includes('frontend.')) {
         return `${proto}//${host.replace('frontend.', 'backend.')}${path}`;
       }

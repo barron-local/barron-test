@@ -43,7 +43,7 @@ npm run test:e2e:report
 
 ## 🌐 การเปลี่ยน URL ทดสอบ (กรณีทดสอบผ่าน Localhost หรือ IP)
 
-ค่าเริ่มต้นถูกตั้งไว้ที่ `https://frontend.mydomain.lab` หากต้องการทดสอบกับ `localhost:3000` สามารถส่งตัวแปร Environment ได้ง่าย ๆ:
+ค่าเริ่มต้นถูกตั้งไว้ที่ `https://frontend.group3.vec` หากต้องการทดสอบกับ `localhost:3000` สามารถส่งตัวแปร Environment ได้ง่าย ๆ:
 
 ```powershell
 $env:BASE_URL="http://localhost:3000"; npm run test:e2e

@@ -29,9 +29,9 @@ graph TD
         Runner["GitLab Runner"]
     end
 
-    User -->|frontend.mydomain.lab| Caddy
-    User -->|backend.mydomain.lab| Caddy
-    User -->|gitlab.mydomain.lab| Caddy
+    User -->|frontend.group3.vec| Caddy
+    User -->|backend.group3.vec| Caddy
+    User -->|gitlab.group3.vec| Caddy
     
     Caddy --> Frontend
     Caddy --> Backend
@@ -52,10 +52,10 @@ graph TD
 * **ไฟล์ตั้งค่า:** `Caddyfile`
 * ทำหน้าที่เป็นประตูหน้าสุด (Gateway) รองรับ SSL/HTTPS แบบ Local อัตโนมัติ (`local_certs`)
 * แจกจ่าย Request ตามชื่อโดเมน:
-  * `frontend.mydomain.lab` $\rightarrow$ ส่งต่อไปยัง Next.js Frontend (`frontend:3000`)
-  * `backend.mydomain.lab` $\rightarrow$ ส่งต่อไปยัง Node.js Express API (`app:5000`)
-  * `gitlab.mydomain.lab` $\rightarrow$ ส่งต่อไปยัง GitLab (`gitlab:80`)
-  * `registry.mydomain.lab` $\rightarrow$ ส่งต่อไปยัง GitLab Container Registry (`gitlab:5050`)
+  * `frontend.group3.vec` $\rightarrow$ ส่งต่อไปยัง Next.js Frontend (`frontend:3000`)
+  * `backend.group3.vec` $\rightarrow$ ส่งต่อไปยัง Node.js Express API (`app:5000`)
+  * `gitlab.group3.vec` $\rightarrow$ ส่งต่อไปยัง GitLab (`gitlab:80`)
+  * `registry.group3.vec` $\rightarrow$ ส่งต่อไปยัง GitLab Container Registry (`gitlab:5050`)
 
 ---
 
@@ -167,7 +167,7 @@ sequenceDiagram
 * **GitLab CI Pipeline (4 Stages):**
   1. `build`: Build Docker Image จาก Dockerfile
   2. `test`: รัน Unit, Integration และ E2E Test (`npm test`) ด้วย Node.js 20
-  3. `push`: Login เข้า Container Registry และ Push Image ขึ้น `registry.mydomain.lab`
+  3. `push`: Login เข้า Container Registry และ Push Image ขึ้น `registry.group3.vec`
   4. `deploy`: ดึง Image ล่าสุดลงมา Deploy (เฉพาะ branch `main`)
 
 ---
@@ -177,11 +177,11 @@ sequenceDiagram
 | บริการ (Service) | Container Name | พอร์ตภายใน Container | พอร์ตภายนอก Host | URL / Domain HTTPS |
 |---|---|---|---|---|
 | **Caddy Gateway** | `caddy` | `80`, `443` | `80`, `443` | เข้าผ่าน HTTPS ทุกโดเมน |
-| **Frontend Web** | `frontend` | `3000` | `3001` | `https://frontend.mydomain.lab` หรือ `http://<IP>:3001` |
-| **Backend API** | `app` | `5000` | `5000` | `https://backend.mydomain.lab` หรือ `http://<IP>:5000` |
+| **Frontend Web** | `frontend` | `3000` | `3001` | `https://frontend.group3.vec` หรือ `http://<IP>:3001` |
+| **Backend API** | `app` | `5000` | `5000` | `https://backend.group3.vec` หรือ `http://<IP>:5000` |
 | **MySQL Database** | `db` | `3306` | `3306` | เชื่อมต่อผ่านโปรแกรมจัดการ DB |
 | **phpMyAdmin** | `phpmyadmin` | `80` | `8080` | `http://<IP>:8080` |
-| **GitLab CE** | `gitlab` | `80`, `5050` | ภายใน Caddy | `https://gitlab.mydomain.lab`, `https://registry.mydomain.lab` |
+| **GitLab CE** | `gitlab` | `80`, `5050` | ภายใน Caddy | `https://gitlab.group3.vec`, `https://registry.group3.vec` |
 | **GitLab Runner** | `gitlab-runner` | - | - | ทำงานเบื้องหลัง เชื่อมกับ GitLab ผ่าน Socket Docker |
 
 ---

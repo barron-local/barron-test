@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://backend.mydomain.lab",
+      "url": "http://backend.group3.vec",
       "description": "Production Backend Reverse Proxy Server"
     },
     {

@@ -128,27 +128,27 @@ sudo docker run -d --name registry --restart always -p 5050:5000 registry:2
 ```
 
 #### 1.9 ตั้งค่า Local Domain Name Resolution (/etc/hosts)
-*(สำคัญมาก: แก้ปัญหาเข้า `https://frontend.mydomain.lab/` หรือ `gitlab.mydomain.lab` ไม่ได้ เพราะเครื่องไม่รู้จักโดเมน `.lab`)*
+*(สำคัญมาก: แก้ปัญหาเข้า `https://frontend.group3.vec/` หรือ `gitlab.group3.vec` ไม่ได้ เพราะเครื่องไม่รู้จักโดเมน `.lab`)*
 
 **1. บนเครื่อง Ubuntu:**
 ```bash
-sudo bash -c 'echo "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts'
+sudo bash -c 'echo "127.0.0.1 frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec app.group3.vec" >> /etc/hosts'
 ```
 
 **2. บนเครื่อง Windows Client (เครื่องที่เปิด Web Browser):**
 - **วิธีที่ 1 (สั่งผ่าน PowerShell ง่ายและเร็วที่สุด):**
   เปิด PowerShell ด้วยสิทธิ์ *Run as Administrator* แล้วรันคำสั่งบรรทัดเดียว:
   ```powershell
-  Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "`n192.168.114.128 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab"
+  Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "`n192.168.114.128 frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec"
   ```
 - **วิธีที่ 2 (เปิดแก้ด้วย Notepad):**
   - เปิด **Notepad** ด้วยสิทธิ์ **"Run as Administrator"**
   - ไปที่เมนู File -> Open -> เลือกไฟล์: `C:\Windows\System32\drivers\etc\hosts` *(เลือก All Files *.*)*
   - เพิ่มบรรทัดด้านล่างนี้ลงไปท้ายไฟล์ (แทนที่ IP ด้วย IP จริงของ Ubuntu):
   ```text
-  192.168.114.128 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab
+  192.168.114.128 frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec
   ```
-- กด Save บันทึกไฟล์ -> จากนั้นเปิด Browser เข้า `https://frontend.mydomain.lab` หรือ `http://gitlab.mydomain.lab:8080` ได้ทันที!
+- กด Save บันทึกไฟล์ -> จากนั้นเปิด Browser เข้า `https://frontend.group3.vec` หรือ `http://gitlab.group3.vec:8080` ได้ทันที!
 *(เนื่องจาก Caddy ใช้ Local Self-signed Cert เมื่อ Browser แจ้งเตือน ให้กด "Advanced" -> "Accept the Risk and Continue")*
 
 ---
@@ -184,14 +184,14 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 sudo docker run -d \
   --name gitlab \
   --restart always \
-  --hostname gitlab.mydomain.lab \
+  --hostname gitlab.group3.vec \
   -p 8080:80 \
   -p 2222:22 \
   -e GITLAB_OMNIBUS_CONFIG="
-    external_url 'http://gitlab.mydomain.lab:8080';
+    external_url 'http://gitlab.group3.vec:8080';
     nginx['listen_port'] = 80;
     nginx['listen_https'] = false;
-    registry_external_url 'http://registry.mydomain.lab:5050';
+    registry_external_url 'http://registry.group3.vec:5050';
     registry_nginx['listen_port'] = 5050;
     registry_nginx['listen_https'] = false;
     gitlab_rails['initial_root_password'] = 'devops1234';
@@ -215,7 +215,7 @@ sudo docker run -d \
 ```
 
 ### 2.3 สร้างโปรเจกต์และเชื่อมต่อ Runner บนเว็บ GitLab:
-1. เปิด Browser บนเครื่อง Windows เข้าไปที่: `http://<IP_UBUNTU>:8080` (หรือ `http://gitlab.mydomain.lab:8080`)
+1. เปิด Browser บนเครื่อง Windows เข้าไปที่: `http://<IP_UBUNTU>:8080` (หรือ `http://gitlab.group3.vec:8080`)
 2. ล็อกอินด้วย:
    - **Username:** `root`
    - **Password:** `devops1234` *(GitLab บังคับรหัสผ่านอย่างน้อย 8 ตัวอักษร)*
@@ -223,7 +223,7 @@ sudo docker run -d \
    > **กรณีเข้าสู่ระบบไม่ได้ (Invalid login or password / หา root ไม่เจอ):**
    > รันคำสั่งกู้คืนหรือสร้างบัญชี root ทันทีใน 15 วินาที:
    > ```bash
-   > docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true); user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.skip_confirmation! if user.respond_to?(:skip_confirmation!); user.save!(validate: false); puts 'Root user ready!'"
+   > docker exec -i gitlab gitlab-rails runner "user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@group3.vec', name: 'Administrator', admin: true); user.password = 'devops1234'; user.password_confirmation = 'devops1234'; user.skip_confirmation! if user.respond_to?(:skip_confirmation!); user.save!(validate: false); puts 'Root user ready!'"
    > ```
 3. *(แนะนำตามเกณฑ์ 2.4.3)* กดไปที่ Admin Area -> สร้าง User ชื่อ `devops` (รหัสผ่าน: `devops1234`)
 4. กดปุ่ม **New Project** -> **Create blank project** -> ตั้งชื่อโปรเจกต์ว่า `devops-tnk`
@@ -318,7 +318,7 @@ sudo docker compose ps
 ## เฟสที่ 5: การสาธิตให้กรรมการตรวจคะแนน (Checklist หน้างาน)
 
 ### 5.1 เข้าใช้งานหน้าเว็บจริงผ่าน HTTPS
-เปิด Browser เข้าไปที่: **`https://<IP_UBUNTU>`** (หรือ `https://app.mydomain.lab`)
+เปิด Browser เข้าไปที่: **`https://<IP_UBUNTU>`** (หรือ `https://app.group3.vec`)
 
 ### 5.2 สาธิตฟังก์ชันตามใบประเมินคะแนน:
 1. **ระบบ Login ด้วย JWT Token (แยกสิทธิ์ 3 ระดับ):**
@@ -388,14 +388,14 @@ ip route get 1.1.1.1 | awk '{print $7}'
 
 ในโฟลเดอร์ `docs/postman/` หรือบนหน้า Desktop โฟลเดอร์ `postman-devops-tnk` ได้เตรียมไฟล์ Preset สำหรับนำเข้า (Import) ในโปรแกรม Postman ไว้เรียบร้อยแล้ว:
 1. **`devops-tnk.postman_collection.json`** - ชุดคำสั่งยิง API ครบทุกเกณฑ์
-2. **`devops-tnk-domain.postman_environment.json`** - ตัวแปร Environment สำหรับยิงผ่าน `https://backend.mydomain.lab`
+2. **`devops-tnk-domain.postman_environment.json`** - ตัวแปร Environment สำหรับยิงผ่าน `https://backend.group3.vec`
 3. **`devops-tnk-localhost.postman_environment.json`** - ตัวแปร Environment สำหรับยิงผ่าน `http://localhost:5000`
 
 ### วิธีนำเข้าและใช้งานใน Postman (3 ขั้นตอนง่ายๆ):
 1. **เปิด Postman ➔ กดปุ่ม `Import` (มุมซ้ายบน)**
    - ลากไฟล์ทั้ง 3 ไฟล์จากโฟลเดอร์ `postman-devops-tnk` เข้าไปใน Postman
 2. **เลือก Environment ด้านบนขวา:**
-   - เลือกเป็น **`DevOps TNK (Domain: backend.mydomain.lab)`** หรือ **`DevOps TNK (Localhost: 5000)`**
+   - เลือกเป็น **`DevOps TNK (Domain: backend.group3.vec)`** หรือ **`DevOps TNK (Localhost: 5000)`**
 3. **ยิงคำสั่งตามหัวข้อที่กรรมการต้องการตรวจ:**
    - **โฟลเดอร์ 01. Login & Security (เกณฑ์ 4.5.4):** กดยิงข้อ `1.1 Login ด้วย Admin` ➔ **ระบบจะบันทึก Token ลงตัวแปรให้อัตโนมัติทันที** คำสั่งอื่นหลังจากนี้จะยิงได้ทันทีโดยไม่ต้องก๊อปปี้ Token เอง
    - **โฟลเดอร์ 02. GET Requests (เกณฑ์ 4.5.1, 4.5.6):** ยิงค้นหาด้วย Query (`?search=admin`), กรองข้อมูล (`?role=readonly`), หรือยิงตาม Path Param (`/api/users/1`)

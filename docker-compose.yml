@@ -45,17 +45,17 @@ services:
     image: gitlab/gitlab-ce:latest
     container_name: gitlab
     restart: always
-    hostname: 'gitlab.mydomain.lab'
+    hostname: 'gitlab.group3.vec'
     ports:
       - "8080:80"
       - "2222:22"
     environment:
       GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://gitlab.mydomain.lab:8080'
+        external_url 'http://gitlab.group3.vec:8080'
         nginx['listen_port'] = 80
         nginx['listen_https'] = false
         gitlab_rails['trusted_proxies'] = ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']
-        registry_external_url 'http://registry.mydomain.lab:5050'
+        registry_external_url 'http://registry.group3.vec:5050'
         registry_nginx['listen_port'] = 5050
         registry_nginx['listen_https'] = false
         gitlab_rails['gitlab_shell_ssh_port'] = 2222

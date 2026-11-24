@@ -100,10 +100,10 @@ fn_quick_docker_caddy() {
   fi
 
   SERVER_IP=$(get_server_ip)
-  sed -i '/mydomain.lab/d' /etc/hosts
-  echo -e "127.0.0.1 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
+  sed -i '/group3.vec/d' /etc/hosts
+  echo -e "127.0.0.1 frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec app.group3.vec" >> /etc/hosts
   if [ "$SERVER_IP" != "127.0.0.1" ]; then
-    echo -e "${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab" >> /etc/hosts
+    echo -e "${SERVER_IP} frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec app.group3.vec" >> /etc/hosts
   fi
 
   apt install -y ufw curl &>/dev/null || true
@@ -191,7 +191,7 @@ EOF
   if docker ps 2>/dev/null | grep -q gitlab; then
     (
       docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/unlock_root.rb
-user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true)
+user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@group3.vec', name: 'Administrator', admin: true)
 user.password = 'devops1234'
 user.password_confirmation = 'devops1234'
 user.skip_confirmation! if user.respond_to?(:skip_confirmation!)
@@ -311,7 +311,7 @@ fn_cleanup_disk_space() {
 show_windows_powershell_cmd() {
   SERVER_IP=$(get_server_ip)
   echo ""
-  echo "Add-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab app.mydomain.lab\" -Force"
+  echo "Add-Content -Path \"\$env:windir\\System32\\drivers\\etc\\hosts\" -Value \"\`n${SERVER_IP} frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec app.group3.vec\" -Force"
   echo ""
 }
 
@@ -321,7 +321,7 @@ fn_reset_gitlab_root() {
     exit 1
   fi
   docker exec -i gitlab bash -c "cat << 'EOF' > /tmp/unlock_root.rb
-user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@mydomain.lab', name: 'Administrator', admin: true)
+user = User.find_by_username('root') || User.new(username: 'root', email: 'admin@group3.vec', name: 'Administrator', admin: true)
 user.password = 'devops1234'
 user.password_confirmation = 'devops1234'
 user.skip_confirmation! if user.respond_to?(:skip_confirmation!)
@@ -348,8 +348,8 @@ gitlab-rails runner /tmp/unlock_root.rb
 
 fn_auto_push_gitlab_branches() {
   clear
-  read -p "Repository URL [http://gitlab.mydomain.lab:8080/tnk/devops-tnk.git]: " GITLAB_URL
-  [ -z "$GITLAB_URL" ] && GITLAB_URL="http://gitlab.mydomain.lab:8080/tnk/devops-tnk.git"
+  read -p "Repository URL [http://gitlab.group3.vec:8080/tnk/devops-tnk.git]: " GITLAB_URL
+  [ -z "$GITLAB_URL" ] && GITLAB_URL="http://gitlab.group3.vec:8080/tnk/devops-tnk.git"
 
   read -p "Username [root]: " GIT_USER
   [ -z "$GIT_USER" ] && GIT_USER="root"
@@ -411,7 +411,7 @@ fn_auto_push_gitlab_branches() {
 
   git init -b main &>/dev/null || git init &>/dev/null
   git config user.name "devops"
-  git config user.email "devops@mydomain.lab"
+  git config user.email "devops@group3.vec"
   git config http.sslVerify false
 
   # กำหนดข้อความ Commit ให้ดูเป็นธรรมชาติ สไตล์โปรแกรมเมอร์ทั่วไป (ไม่ดูเป็นทางการหรือเหมือน AI เขียน)

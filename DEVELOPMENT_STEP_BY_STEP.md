@@ -52,7 +52,7 @@ sudo nano /etc/hosts
 ```
 เพิ่มบรรทัดนี้ลงไป:
 ```text
-127.0.0.1 backend.mydomain.lab frontend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab
+127.0.0.1 backend.group3.vec frontend.group3.vec gitlab.group3.vec registry.group3.vec
 ```
 *(กด `Ctrl+O` -> `Enter` -> `Ctrl+X` เพื่อบันทึก)*
 
@@ -68,7 +68,7 @@ docker compose up -d --build
 >   **1. คำสั่ง PowerShell บน Windows (เปิดด้วย Run as Administrator):**
 >   *(ใส่ IP ของ Ubuntu แทนที่ `192.168.1.150` แล้วกด Enter บันทึกลง hosts ทันที)*
 >   ```powershell
->   Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "`n192.168.1.150 frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab"
+>   Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "`n192.168.1.150 frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec"
 >   ```
 >   *(ตรวจสอบว่าเข้าไฟล์แล้วด้วยคำสั่ง: `Get-Content $env:windir\System32\drivers\etc\hosts -Tail 3`)*
 >
@@ -93,7 +93,7 @@ docker compose up -d --build
   git push -u origin main
   ```
 - **ถ้าไม่มีเน็ต (Local GitLab บนเครื่อง):**
-  - เข้า `https://gitlab.mydomain.lab` ด้วย User: `root` / Password: `password`
+  - เข้า `https://gitlab.group3.vec` ด้วย User: `root` / Password: `password`
   - สร้าง New Project ชื่อ `api` (เอาติ๊กถูก README ออก)
   - สั่ง Push:
     ```bash
@@ -168,13 +168,13 @@ docker exec -it gitlab-runner gitlab-runner register \
 1. เปิดไฟล์ `C:\Windows\System32\drivers\etc\hosts` บนเครื่องคอมของคุณด้วยสิทธิ์ Admin
 2. เพิ่มบรรทัดนี้ลงไป (แทนที่ `<IP_Ubuntu>` ด้วยเลข IP จริง เช่น `192.168.1.150`):
    ```text
-   <IP_Ubuntu>  frontend.mydomain.lab backend.mydomain.lab gitlab.mydomain.lab registry.mydomain.lab
+   <IP_Ubuntu>  frontend.group3.vec backend.group3.vec gitlab.group3.vec registry.group3.vec
    ```
 3. เปิดเบราว์เซอร์เข้าใช้งานผ่าน HTTPS ได้ทันที:
-   - Frontend: `https://frontend.mydomain.lab`
-   - Backend API: `https://backend.mydomain.lab`
-   - GitLab Server: `https://gitlab.mydomain.lab`
-   - Container Registry: `https://registry.mydomain.lab`
+   - Frontend: `https://frontend.group3.vec`
+   - Backend API: `https://backend.group3.vec`
+   - GitLab Server: `https://gitlab.group3.vec`
+   - Container Registry: `https://registry.group3.vec`
 
 ---
 
@@ -197,7 +197,7 @@ docker exec -it gitlab-runner gitlab-runner register \
 
 | ระบบ | URL | Username | Password |
 | :--- | :--- | :--- | :--- |
-| **GitLab (Server)** | `https://gitlab.mydomain.lab` | `root` | `password` |
+| **GitLab (Server)** | `https://gitlab.group3.vec` | `root` | `password` |
 | **Web UI (Admin)** | `http://<IP_Ubuntu>:3001` | `admin` | `admin` |
 | **Web UI (Editonly)** | `http://<IP_Ubuntu>:3001` | `editor` | `editor` |
 | **Web UI (Readonly)** | `http://<IP_Ubuntu>:3001` | `user` | `user` |
