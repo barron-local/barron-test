@@ -40,11 +40,15 @@ test.describe.serial('E2E Test', () => {
 
   test('E2E-003: ผู้ใช้ค้นหาข้อมูลสำเร็จ', async () => {
     await page.fill('input[placeholder="ค้นหาชื่อผู้ใช้ (Search)..."]', testUser);
+    await page.selectOption('.filter-bar select:has(option[value="readonly"])', 'readonly');
+    await page.selectOption('.filter-bar select:has(option[value="on"])', 'on');
     await page.click('button:has-text("ค้นหาข้อมูล")');
 
     await page.waitForTimeout(500);
     const tableContent = await page.textContent('table');
     expect(tableContent).toContain(testUser);
+
+    await page.click('button:has-text("ล้างตัวกรอง")');
   });
 
   test('E2E-004: ผู้ใช้ออกจากระบบสำเร็จ', async () => {
