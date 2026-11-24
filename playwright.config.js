@@ -13,7 +13,9 @@ module.exports = defineConfig({
   },
   fullyParallel: false, // รันเรียงทีละข้อตามลำดับ
   workers: 1,
-  reporter: 'list',
+  reporter: [
+    ['./e2e/reporter.js']
+  ],
   use: {
     baseURL: process.env.BASE_URL || 'https://frontend.mydomain.lab',
     headless: false,
