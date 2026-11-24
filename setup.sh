@@ -629,6 +629,14 @@ fn_setup_dns_server() {
   local IP_D=$(echo "$SERVER_IP" | cut -d. -f4)
   local REV_ZONE="${IP_C}.${IP_B}.${IP_A}.in-addr.arpa"
 
+  local DNS_HOSTNAME="$1"
+  if [ -z "$DNS_HOSTNAME" ]; then
+    read -p "DNS Hostname [dns]: " DNS_HOSTNAME
+    [ -z "$DNS_HOSTNAME" ] && DNS_HOSTNAME="dns"
+  fi
+  local DNS_DOMAIN="group3.vec"
+  local FULL_NS="${DNS_HOSTNAME}.${DNS_DOMAIN}"
+
   # ปิด service ที่แย่งพอร์ต 53 บน Ubuntu
   systemctl stop systemd-resolved 2>/dev/null || true
   systemctl disable systemd-resolved 2>/dev/null || true
@@ -651,9 +659,9 @@ options {
     listen-on-v6 { any; };
 };
 
-zone "group3.vec" {
+zone "${DNS_DOMAIN}" {
     type master;
-    file "/etc/bind/db.group3.vec";
+    file "/etc/bind/db.${DNS_DOMAIN}";
 };
 
 zone "${REV_ZONE}" {
@@ -662,17 +670,19 @@ zone "${REV_ZONE}" {
 };
 EOF
 
-  cat << EOF > /opt/dns-server/named-conf/db.group3.vec
+  cat << EOF > /opt/dns-server/named-conf/db.${DNS_DOMAIN}
 \$TTL    60
-@       IN      SOA     ns.group3.vec. admin.group3.vec. (
+@       IN      SOA     ${FULL_NS}. admin.${DNS_DOMAIN}. (
                               1         ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
                           86400 )       ; Negative Cache TTL
 ;
-@       IN      NS      ns.group3.vec.
+@       IN      NS      ${FULL_NS}.
+${DNS_HOSTNAME} IN A     ${SERVER_IP}
 ns      IN      A       ${SERVER_IP}
+dns     IN      A       ${SERVER_IP}
 @       IN      A       ${SERVER_IP}
 frontend IN     A       ${SERVER_IP}
 backend  IN     A       ${SERVER_IP}
@@ -684,15 +694,15 @@ EOF
 
   cat << EOF > /opt/dns-server/named-conf/db.${IP_A}.${IP_B}.${IP_C}
 \$TTL    60
-@       IN      SOA     ns.group3.vec. admin.group3.vec. (
+@       IN      SOA     ${FULL_NS}. admin.${DNS_DOMAIN}. (
                               1         ; Serial
                          604800         ; Refresh
                           86400         ; Retry
                         2419200         ; Expire
                           86400 )       ; Negative Cache TTL
 ;
-@       IN      NS      ns.group3.vec.
-${IP_D} IN      PTR     ns.group3.vec.
+@       IN      NS      ${FULL_NS}.
+${IP_D} IN      PTR     ${FULL_NS}.
 EOF
 
   chmod -R 755 /opt/dns-server/named-conf
@@ -708,8 +718,8 @@ EOF
   fi
 
   echo ""
-  echo "dns server ready on port 53 (forward & reverse PTR zones)"
-  echo "test: nslookup frontend.group3.vec ${SERVER_IP}"
+  echo "dns server ready on port 53 (Server: ${FULL_NS})"
+  echo "test: nslookup frontend.${DNS_DOMAIN} ${SERVER_IP}"
 }
 
 fn_setup_linux_dhcp() {
@@ -1260,6 +1270,6 @@ case $USER_CHOICE in
   6) fn_auto_push_gitlab_branches ;;
   7) fn_cleanup_disk_space ;;
   8) fn_register_gitlab_runner_standalone ;;
-  9) fn_setup_dns_server ;;
+  9) fn_setup_dns_server "$2" ;;
   10) fn_setup_dhcp_snooping_helper "$2" ;;
 esac
