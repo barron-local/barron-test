@@ -4,7 +4,7 @@ test.describe.serial('E2E Test', () => {
   let context;
   let page;
 
-  const testUser = `e2e_user_${Date.now().toString().slice(-4)}`;
+  const testUser = `tnk-${Date.now().toString().slice(-4)}`;
   const testPassword = 'Password123!';
 
   test.beforeAll(async ({ browser }) => {
