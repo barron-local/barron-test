@@ -38,7 +38,7 @@
 
 ---
 
-## 4. สรุป Endpoint และ HTTP Method
+## 4. Endpoint และ HTTP Method
 
 | Method | Endpoint | การทำงาน | เหตุผลที่เลือกใช้ Method นี้ |
 | :--- | :--- | :--- | :--- |
