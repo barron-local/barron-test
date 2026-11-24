@@ -623,10 +623,28 @@ fn_register_gitlab_runner_standalone() {
 fn_setup_dns_server() {
   clear
   local DETECTED_IP=$(get_server_ip)
-  local SERVER_IP="$2"
+  local SERVER_IP=""
+  local DNS_HOSTNAME=""
+
+  # Detect if arguments are IP or Hostname
+  if [ -n "$1" ]; then
+    if echo "$1" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+      SERVER_IP="$1"
+      DNS_HOSTNAME="${2:-dns}"
+    else
+      DNS_HOSTNAME="$1"
+      SERVER_IP="$2"
+    fi
+  fi
+
   if [ -z "$SERVER_IP" ]; then
     read -p "Server IP [${DETECTED_IP}]: " SERVER_IP
     [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
+  fi
+
+  if [ -z "$DNS_HOSTNAME" ]; then
+    read -p "DNS Hostname [dns]: " DNS_HOSTNAME
+    [ -z "$DNS_HOSTNAME" ] && DNS_HOSTNAME="dns"
   fi
 
   local IP_A=$(echo "$SERVER_IP" | cut -d. -f1)
@@ -634,20 +652,19 @@ fn_setup_dns_server() {
   local IP_C=$(echo "$SERVER_IP" | cut -d. -f3)
   local IP_D=$(echo "$SERVER_IP" | cut -d. -f4)
   local REV_ZONE="${IP_C}.${IP_B}.${IP_A}.in-addr.arpa"
-
-  local DNS_HOSTNAME="$1"
-  if [ -z "$DNS_HOSTNAME" ]; then
-    read -p "DNS Hostname [dns]: " DNS_HOSTNAME
-    [ -z "$DNS_HOSTNAME" ] && DNS_HOSTNAME="dns"
-  fi
   local DNS_DOMAIN="group3.vec"
   local FULL_NS="${DNS_HOSTNAME}.${DNS_DOMAIN}"
 
   # ปิด service ที่แย่งพอร์ต 53 บน Ubuntu
   systemctl stop systemd-resolved 2>/dev/null || true
   systemctl disable systemd-resolved 2>/dev/null || true
+  systemctl mask systemd-resolved 2>/dev/null || true
   rm -f /etc/resolv.conf 2>/dev/null || true
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  cat << EOF > /etc/resolv.conf
+nameserver 127.0.0.1
+nameserver 8.8.8.8
+options timeout:2
+EOF
 
   ufw allow 53/tcp &>/dev/null || true
   ufw allow 53/udp &>/dev/null || true
@@ -794,6 +811,7 @@ subnet ${V_SUBNET} netmask 255.255.255.0 {
   option routers ${V_GW};
   option subnet-mask 255.255.255.0;
   option domain-name-servers ${SERVER_IP};
+  option domain-name "group3.vec";
 }
 EOF
   done
@@ -834,9 +852,9 @@ EOF
   chmod 775 /var/lib/dhcp 2>/dev/null || true
   chmod 664 /var/lib/dhcp/dhcpd.leases 2>/dev/null || true
 
-  if grep -q '^INTERFACESv4=' /etc/default/isc-dhcp-server 2>/dev/null; then
-    sed -i 's/^INTERFACESv4=.*/INTERFACESv4="'"$DHCP_IFS"'"/' /etc/default/isc-dhcp-server
-  else
+  sed -i 's/^#\?INTERFACESv4=.*/INTERFACESv4="'"$DHCP_IFS"'"/' /etc/default/isc-dhcp-server 2>/dev/null || true
+  sed -i 's/^#\?INTERFACES=.*/INTERFACES="'"$DHCP_IFS"'"/' /etc/default/isc-dhcp-server 2>/dev/null || true
+  if ! grep -q '^INTERFACESv4=' /etc/default/isc-dhcp-server 2>/dev/null; then
     echo "INTERFACESv4=\"$DHCP_IFS\"" >> /etc/default/isc-dhcp-server
   fi
   dhcpd -t -cf /etc/dhcp/dhcpd.conf || return 1
@@ -1293,6 +1311,14 @@ fn_set_static_ip() {
   read -p "DNS servers [127.0.0.1, 8.8.8.8]: " NEW_DNS
   [ -z "$NEW_DNS" ] && NEW_DNS="127.0.0.1, 8.8.8.8"
 
+  # Backup any conflicting netplan configuration files (e.g. 00-installer-config.yaml)
+  for f in /etc/netplan/*.yaml; do
+    [ -f "$f" ] || continue
+    [ "$(basename "$f")" = "01-static-ip.yaml" ] && continue
+    [ "$(basename "$f")" = "01-network-manager-all.yaml" ] && continue
+    mv "$f" "${f}.bak" 2>/dev/null || true
+  done
+
   cat << EOF > /etc/netplan/01-static-ip.yaml
 network:
   version: 2
@@ -1311,6 +1337,15 @@ network:
 EOF
   chmod 600 /etc/netplan/01-static-ip.yaml
   netplan apply 2>/dev/null || true
+
+  # Ensure /etc/resolv.conf points to local DNS first
+  rm -f /etc/resolv.conf 2>/dev/null || true
+  cat << EOF > /etc/resolv.conf
+nameserver 127.0.0.1
+nameserver 8.8.8.8
+options timeout:2
+EOF
+
   sleep 1
   echo ""
   echo "[✓] Netplan applied! Current IP:"
@@ -1353,7 +1388,7 @@ case $USER_CHOICE in
   6) fn_auto_push_gitlab_branches ;;
   7) fn_cleanup_disk_space ;;
   8) fn_register_gitlab_runner_standalone ;;
-  9) fn_setup_dns_server "$2" ;;
-  10) fn_setup_dhcp_snooping_helper "$2" ;;
-  11) fn_set_static_ip ;;
+  9) fn_setup_dns_server "${@:2}" ;;
+  10) fn_setup_dhcp_snooping_helper "${@:2}" ;;
+  11) fn_set_static_ip "${@:2}" ;;
 esac
