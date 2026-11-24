@@ -1164,13 +1164,16 @@ EOF
 }
 
 fn_setup_dhcp_snooping_helper() {
-  clear
-  echo "1) setup linux dhcp server (1 or 2 vlans)"
-  echo "2) cisco switch dhcp snooping config"
-  echo "3) test dhcp & snooping (switch simulation)"
-  echo "4) test real isc-dhcp-server (daemon verification)"
-  read -p "Select (1-4) [3]: " DHCP_ACT
-  [ -z "$DHCP_ACT" ] && DHCP_ACT="3"
+  local DHCP_ACT="$1"
+  if [ -z "$DHCP_ACT" ]; then
+    clear
+    echo "1) setup linux dhcp server (1 or 2 vlans)"
+    echo "2) cisco switch dhcp snooping config"
+    echo "3) test dhcp & snooping (switch simulation)"
+    echo "4) test real isc-dhcp-server (daemon verification)"
+    read -p "Select (1-4) [3]: " DHCP_ACT
+    [ -z "$DHCP_ACT" ] && DHCP_ACT="3"
+  fi
 
   case $DHCP_ACT in
     1) fn_setup_linux_dhcp ;;
@@ -1199,19 +1202,26 @@ fn_setup_dhcp_snooping_helper() {
   esac
 }
 
-clear
-echo "0) deploy stack"
-echo "1) firewall"
-echo "2) docker install"
-echo "3) load images"
-echo "4) show host command"
-echo "5) reset gitlab"
-echo "6) push gitlab branches"
-echo "7) disk cleanup"
-echo "8) register gitlab runner"
-echo "9) setup dns server (bind9 port 53)"
-echo "10) dhcp server & snooping"
-read -p "Select [0]: " USER_CHOICE
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
+USER_CHOICE="$1"
+if [ -z "$USER_CHOICE" ]; then
+  clear
+  echo "0) deploy stack"
+  echo "1) firewall"
+  echo "2) docker install"
+  echo "3) load images"
+  echo "4) show host command"
+  echo "5) reset gitlab"
+  echo "6) push gitlab branches"
+  echo "7) disk cleanup"
+  echo "8) register gitlab runner"
+  echo "9) setup dns server (bind9 port 53)"
+  echo "10) dhcp server & snooping"
+  read -p "Select [0]: " USER_CHOICE
+fi
 
 if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ]; then
   fn_quick_docker_caddy
@@ -1228,5 +1238,5 @@ case $USER_CHOICE in
   7) fn_cleanup_disk_space ;;
   8) fn_register_gitlab_runner_standalone ;;
   9) fn_setup_dns_server ;;
-  10) fn_setup_dhcp_snooping_helper ;;
+  10) fn_setup_dhcp_snooping_helper "$2" ;;
 esac
