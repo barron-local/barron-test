@@ -5,13 +5,13 @@ const createApp = require("./app")
 const { JWT_SECRET } = require("./middlewares/auth.middleware")
 
 async function main() {
-  // Unit Test: JWT Token
+  // 1. unit test
   const token = jwt.sign({ username: "admin", role: "admin" }, JWT_SECRET)
   const decoded = jwt.verify(token, JWT_SECRET)
   assert.strictEqual(decoded.username, "admin")
   console.log("Unit Test: JWT Sign & Verify Passed")
 
-  // Integration Test: API Endpoint & Auth Middleware
+  // 2. integration test
   const app = createApp()
   const res = await request(app).get("/api/health")
   assert.strictEqual(res.statusCode, 200)
