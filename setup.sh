@@ -622,7 +622,13 @@ fn_register_gitlab_runner_standalone() {
 
 fn_setup_dns_server() {
   clear
-  local SERVER_IP=$(get_server_ip)
+  local DETECTED_IP=$(get_server_ip)
+  local SERVER_IP="$2"
+  if [ -z "$SERVER_IP" ]; then
+    read -p "Server IP [${DETECTED_IP}]: " SERVER_IP
+    [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
+  fi
+
   local IP_A=$(echo "$SERVER_IP" | cut -d. -f1)
   local IP_B=$(echo "$SERVER_IP" | cut -d. -f2)
   local IP_C=$(echo "$SERVER_IP" | cut -d. -f3)
@@ -724,7 +730,10 @@ EOF
 
 fn_setup_linux_dhcp() {
   clear
-  local SERVER_IP=$(get_server_ip)
+  local DETECTED_IP=$(get_server_ip)
+  read -p "Server IP (DNS & Relay) [${DETECTED_IP}]: " SERVER_IP
+  [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
+
   local DEFAULT_IF=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5}' | head -n 1)
   [ -z "$DEFAULT_IF" ] && DEFAULT_IF="ens33"
 
@@ -766,8 +775,12 @@ stash-agent-options true;
 EOF
 
   for v in $(echo "$VLAN_LIST" | tr ',' ' '); do
-    read -p "VLAN ${v} subnet [192.168.${v}.0]: " V_SUBNET
-    [ -z "$V_SUBNET" ] && V_SUBNET="192.168.${v}.0"
+    local DEF_SUBNET="192.168.${v}.0"
+    if [ "$v" = "10" ] && echo "$SERVER_IP" | grep -q '^192\.168\.103\.'; then
+      DEF_SUBNET="192.168.103.0"
+    fi
+    read -p "VLAN ${v} subnet [${DEF_SUBNET}]: " V_SUBNET
+    [ -z "$V_SUBNET" ] && V_SUBNET="$DEF_SUBNET"
     local V_PREFIX=$(echo "$V_SUBNET" | awk -F. '{print $1"."$2"."$3}')
     read -p "VLAN ${v} range [${V_PREFIX}.100 ${V_PREFIX}.200]: " V_RANGE
     [ -z "$V_RANGE" ] && V_RANGE="${V_PREFIX}.100 ${V_PREFIX}.200"
@@ -838,13 +851,16 @@ EOF
 
 fn_test_dhcp_isolated() {
   clear
+  local SERVER_IP=$(get_server_ip)
   cat << 'PYEOF' > /tmp/.dhcp_sim.py
 import socket
 import struct
+import sys
 import threading
 import time
 
 MAGIC_COOKIE = b"\x63\x82\x53\x63"
+SERVER_IP = sys.argv[1] if len(sys.argv) > 1 else "192.168.103.1"
 
 
 def parse_options(data):
@@ -911,8 +927,8 @@ class RealDHCPServer:
         self.sock.settimeout(0.2)
         self.running = True
         self.pools = {
-            "192.168.10.1": {"next": 100, "prefix": "192.168.10", "mask": "255.255.255.0", "gw": "192.168.10.1", "dns": "192.168.110.129", "vlan": 10},
-            "192.168.20.1": {"next": 100, "prefix": "192.168.20", "mask": "255.255.255.0", "gw": "192.168.20.1", "dns": "192.168.110.129", "vlan": 20},
+            "192.168.10.1": {"next": 100, "prefix": "192.168.10", "mask": "255.255.255.0", "gw": "192.168.10.1", "dns": SERVER_IP, "vlan": 10},
+            "192.168.20.1": {"next": 100, "prefix": "192.168.20", "mask": "255.255.255.0", "gw": "192.168.20.1", "dns": SERVER_IP, "vlan": 20},
         }
         self.leases = {}
 
@@ -1107,10 +1123,10 @@ PYEOF
 
   if ip netns add dhcp-sim 2>/dev/null; then
     ip netns exec dhcp-sim ip link set lo up
-    ip netns exec dhcp-sim python3 /tmp/.dhcp_sim.py
+    ip netns exec dhcp-sim python3 /tmp/.dhcp_sim.py "${SERVER_IP}"
     ip netns del dhcp-sim 2>/dev/null || true
   else
-    python3 /tmp/.dhcp_sim.py
+    python3 /tmp/.dhcp_sim.py "${SERVER_IP}"
   fi
   rm -f /tmp/.dhcp_sim.py
 }
@@ -1223,7 +1239,9 @@ fn_setup_dhcp_snooping_helper() {
     1) fn_setup_linux_dhcp ;;
     2)
       clear
-      local SERVER_IP=$(get_server_ip)
+      local DETECTED_IP=$(get_server_ip)
+      read -p "Server IP [${DETECTED_IP}]: " SERVER_IP
+      [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
       read -p "DHCP Server switch port [1]: " PORT_NUM
       [ -z "$PORT_NUM" ] && PORT_NUM="1"
       read -p "VLANs [10,20]: " VLANS
@@ -1255,6 +1273,50 @@ fn_setup_dhcp_snooping_helper() {
   esac
 }
 
+fn_set_static_ip() {
+  clear
+  local DEFAULT_IF=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5}' | head -n 1)
+  [ -z "$DEFAULT_IF" ] && DEFAULT_IF="ens33"
+  local CURRENT_IP=$(get_server_ip)
+
+  echo "Current IP: ${CURRENT_IP}"
+  read -p "Interface [${DEFAULT_IF}]: " IFACE
+  [ -z "$IFACE" ] && IFACE="$DEFAULT_IF"
+
+  read -p "Static IP with CIDR [192.168.103.10/24]: " NEW_IP_CIDR
+  [ -z "$NEW_IP_CIDR" ] && NEW_IP_CIDR="192.168.103.10/24"
+
+  local IP_PREFIX=$(echo "$NEW_IP_CIDR" | cut -d/ -f1 | awk -F. '{print $1"."$2"."$3}')
+  read -p "Gateway [${IP_PREFIX}.1]: " NEW_GW
+  [ -z "$NEW_GW" ] && NEW_GW="${IP_PREFIX}.1"
+
+  read -p "DNS servers [127.0.0.1, 8.8.8.8]: " NEW_DNS
+  [ -z "$NEW_DNS" ] && NEW_DNS="127.0.0.1, 8.8.8.8"
+
+  cat << EOF > /etc/netplan/01-static-ip.yaml
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    ${IFACE}:
+      dhcp4: false
+      dhcp6: false
+      addresses:
+        - ${NEW_IP_CIDR}
+      routes:
+        - to: default
+          via: ${NEW_GW}
+      nameservers:
+        addresses: [$(echo "$NEW_DNS" | tr -d ' ')]
+EOF
+  chmod 600 /etc/netplan/01-static-ip.yaml
+  netplan apply 2>/dev/null || true
+  sleep 1
+  echo ""
+  echo "[✓] Netplan applied! Current IP:"
+  ip -4 addr show "$IFACE" 2>/dev/null | grep inet
+}
+
 if [ "${BASH_SOURCE[0]}" != "$0" ]; then
   return 0 2>/dev/null || exit 0
 fi
@@ -1273,6 +1335,7 @@ if [ -z "$USER_CHOICE" ]; then
   echo "8) register gitlab runner"
   echo "9) setup dns server (bind9 port 53)"
   echo "10) dhcp server & snooping"
+  echo "11) set static ip (192.168.103.xxx)"
   read -p "Select [0]: " USER_CHOICE
 fi
 
@@ -1292,4 +1355,5 @@ case $USER_CHOICE in
   8) fn_register_gitlab_runner_standalone ;;
   9) fn_setup_dns_server "$2" ;;
   10) fn_setup_dhcp_snooping_helper "$2" ;;
+  11) fn_set_static_ip ;;
 esac
