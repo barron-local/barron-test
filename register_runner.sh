@@ -26,7 +26,7 @@ START_TIME=$(date +%s)
 echo "==> กำลังผูกตัวรันงาน (GitLab Runner) ด้วย Token: $TOKEN"
 
 # 1. ปลุกให้ตัวรันงาน (gitlab-runner) ตื่นขึ้นมาพร้อมทำงานก่อน
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d gitlab-runner &>/dev/null || true
+docker compose -f "$SCRIPT_DIR/docker-compose.yaml" up -d gitlab-runner &>/dev/null || true
 
 # 2. ลบของเก่าที่พังทิ้งไปก่อน ป้องกันของเก่ามาตีกับของใหม่
 docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true

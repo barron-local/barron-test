@@ -441,7 +441,7 @@ fn_auto_push_gitlab_branches() {
 
   # 2. แตกกิ่ง devops ทำงานส่วนระบบและเซิร์ฟเวอร์
   git checkout -b devops &>/dev/null
-  for item in docker-compose.yml Dockerfile Caddyfile .gitlab-ci.yml runner; do
+  for item in docker-compose.yaml Dockerfile Caddyfile .gitlab-ci.yml runner; do
     [ -e "$item" ] && git add "$item" 2>/dev/null || true
   done
   git commit -m "$MSG_DEVOPS" &>/dev/null || true
@@ -586,7 +586,7 @@ fn_register_gitlab_runner_standalone() {
     else
       START_TIME=$(date +%s)
       echo "==> กำลังผูกตัวรันงาน (GitLab Runner) ด้วย Token: $USER_RUNNER_TOKEN"
-      docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d gitlab-runner &>/dev/null || true
+      docker compose -f "$SCRIPT_DIR/docker-compose.yaml" up -d gitlab-runner &>/dev/null || true
       docker exec -i gitlab-runner rm -f /etc/gitlab-runner/config.toml &>/dev/null || true
       rm -f "$SCRIPT_DIR/runner/config.toml" 2>/dev/null || true
       NETWORK_NAME=$(docker inspect gitlab-runner --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null)
@@ -640,6 +640,7 @@ options {
     directory "/var/cache/bind";
     allow-query { trusted_clients; };
     recursion yes;
+    dnssec-validation no;
     forwarders { 8.8.8.8; 1.1.1.1; };
     listen-on { any; };
     listen-on-v6 { any; };
@@ -671,34 +672,414 @@ app      IN     A       ${SERVER_IP}
 *        IN     A       ${SERVER_IP}
 EOF
 
+  chmod -R 755 /opt/dns-server/named-conf
   docker rm -f dns-server &>/dev/null || true
-  docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest &>/dev/null || true
-  
+  if ! docker run -d --name dns-server --restart always -e TZ=UTC -e BIND9_USER=root -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest; then
+    echo "dns-server failed to start"
+    return 1
+  fi
+  sleep 2
+  if ! docker ps --filter "name=^/dns-server$" --filter "status=running" -q | grep -q .; then
+    docker logs dns-server --tail 20
+    return 1
+  fi
+
   echo ""
   echo "dns server ready on port 53"
   echo "test: nslookup frontend.group3.vec ${SERVER_IP}"
 }
 
+fn_setup_linux_dhcp() {
+  clear
+  local SERVER_IP=$(get_server_ip)
+  local DEFAULT_IF=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5}' | head -n 1)
+  [ -z "$DEFAULT_IF" ] && DEFAULT_IF="ens33"
+
+  read -p "VLAN IDs (e.g. 10 or 10,20) [10,20]: " VLAN_LIST
+  [ -z "$VLAN_LIST" ] && VLAN_LIST="10,20"
+
+  local DEFAULT_DHCP_IFS=""
+  for v in $(echo "$VLAN_LIST" | tr ',' ' '); do
+    DEFAULT_DHCP_IFS="${DEFAULT_DHCP_IFS} ${DEFAULT_IF}.${v}"
+  done
+  DEFAULT_DHCP_IFS=$(echo "$DEFAULT_DHCP_IFS" | xargs)
+
+  read -p "Listen interfaces (space separated) [${DEFAULT_DHCP_IFS}]: " DHCP_IFS
+  [ -z "$DHCP_IFS" ] && DHCP_IFS="$DEFAULT_DHCP_IFS"
+
+  if ! command -v dhcpd &>/dev/null; then
+    apt-get update &>/dev/null || true
+    apt-get install -y isc-dhcp-server
+  fi
+  ufw allow 67/udp &>/dev/null || true
+
+  cat << EOF > /etc/dhcp/dhcpd.conf
+option domain-name "group3.vec";
+option domain-name-servers ${SERVER_IP};
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+EOF
+
+  for v in $(echo "$VLAN_LIST" | tr ',' ' '); do
+    read -p "VLAN ${v} subnet [192.168.${v}.0]: " V_SUBNET
+    [ -z "$V_SUBNET" ] && V_SUBNET="192.168.${v}.0"
+    local V_PREFIX=$(echo "$V_SUBNET" | awk -F. '{print $1"."$2"."$3}')
+    read -p "VLAN ${v} range [${V_PREFIX}.100 ${V_PREFIX}.200]: " V_RANGE
+    [ -z "$V_RANGE" ] && V_RANGE="${V_PREFIX}.100 ${V_PREFIX}.200"
+    read -p "VLAN ${v} gateway [${V_PREFIX}.1]: " V_GW
+    [ -z "$V_GW" ] && V_GW="${V_PREFIX}.1"
+
+    cat << EOF >> /etc/dhcp/dhcpd.conf
+
+subnet ${V_SUBNET} netmask 255.255.255.0 {
+  range ${V_RANGE};
+  option routers ${V_GW};
+  option subnet-mask 255.255.255.0;
+  option domain-name-servers ${SERVER_IP};
+}
+EOF
+  done
+
+  # Ensure any non-VLAN relay interface listed in DHCP_IFS has a valid subnet block
+  for iface in $DHCP_IFS; do
+    if ! echo "$iface" | grep -q '\.'; then
+      local IF_IP=$(ip -4 addr show "$iface" 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -n 1)
+      if [ -n "$IF_IP" ]; then
+        local IF_NET=$(echo "$IF_IP" | awk -F. '{print $1"."$2"."$3".0"}')
+        if ! grep -q "subnet ${IF_NET} " /etc/dhcp/dhcpd.conf; then
+          echo -e "\nsubnet ${IF_NET} netmask 255.255.255.0 {}" >> /etc/dhcp/dhcpd.conf
+        fi
+      fi
+    fi
+  done
+
+  if grep -q '^INTERFACESv4=' /etc/default/isc-dhcp-server 2>/dev/null; then
+    sed -i 's/^INTERFACESv4=.*/INTERFACESv4="'"$DHCP_IFS"'"/' /etc/default/isc-dhcp-server
+  else
+    echo "INTERFACESv4=\"$DHCP_IFS\"" >> /etc/default/isc-dhcp-server
+  fi
+  dhcpd -t -cf /etc/dhcp/dhcpd.conf || return 1
+
+  systemctl enable isc-dhcp-server &>/dev/null || true
+  if systemctl restart isc-dhcp-server 2>/dev/null; then
+    echo "isc-dhcp-server running on: $DHCP_IFS"
+  else
+    echo "dhcpd.conf valid. create/up interfaces ($DHCP_IFS) before starting isc-dhcp-server"
+  fi
+}
+
+fn_test_dhcp_isolated() {
+  clear
+  cat << 'PYEOF' > /tmp/.dhcp_sim.py
+import socket
+import struct
+import threading
+import time
+
+MAGIC_COOKIE = b"\x63\x82\x53\x63"
+
+
+def parse_options(data):
+    opts = {}
+    i = 0
+    while i < len(data):
+        code = data[i]
+        if code == 255:
+            break
+        if code == 0:
+            i += 1
+            continue
+        length = data[i + 1]
+        opts[code] = data[i + 2 : i + 2 + length]
+        i += 2 + length
+    return opts
+
+
+def build_options(opt_dict):
+    out = bytearray(MAGIC_COOKIE)
+    for k, v in opt_dict.items():
+        out.append(k)
+        out.append(len(v))
+        out.extend(v)
+    out.append(255)
+    return bytes(out)
+
+
+def build_dhcp_packet(op, xid, chaddr, yiaddr="0.0.0.0", giaddr="0.0.0.0", opts=None):
+    chaddr_padded = chaddr + b"\x00" * (16 - len(chaddr))
+    hdr = struct.pack(
+        "!BBBBIHH4s4s4s4s16s64s128s",
+        op, 1, 6, 0, xid, 0, 0,
+        socket.inet_aton("0.0.0.0"),
+        socket.inet_aton(yiaddr),
+        socket.inet_aton("0.0.0.0"),
+        socket.inet_aton(giaddr),
+        chaddr_padded,
+        b"\x00" * 64,
+        b"\x00" * 128,
+    )
+    return hdr + (build_options(opts) if opts else MAGIC_COOKIE + b"\xff")
+
+
+def parse_dhcp_packet(pkt):
+    op, htype, hlen, hops, xid, secs, flags, ciaddr, yiaddr, siaddr, giaddr, chaddr, _, _ = struct.unpack(
+        "!BBBBIHH4s4s4s4s16s64s128s", pkt[:236]
+    )
+    assert pkt[236:240] == MAGIC_COOKIE
+    return {
+        "op": op,
+        "xid": xid,
+        "yiaddr": socket.inet_ntoa(yiaddr),
+        "giaddr": socket.inet_ntoa(giaddr),
+        "chaddr": chaddr[:hlen],
+        "options": parse_options(pkt[240:]),
+    }
+
+
+class RealDHCPServer:
+    def __init__(self, host="127.0.0.2", port=67):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((host, port))
+        self.sock.settimeout(0.2)
+        self.running = True
+        self.pools = {
+            "192.168.10.1": {"next": 100, "prefix": "192.168.10", "mask": "255.255.255.0", "gw": "192.168.10.1", "dns": "192.168.110.129", "vlan": 10},
+            "192.168.20.1": {"next": 100, "prefix": "192.168.20", "mask": "255.255.255.0", "gw": "192.168.20.1", "dns": "192.168.110.129", "vlan": 20},
+        }
+        self.leases = {}
+
+    def serve(self):
+        while self.running:
+            try:
+                data, sw_addr = self.sock.recvfrom(1024)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            pkt = parse_dhcp_packet(data)
+            if pkt["op"] != 1:
+                continue
+            msg_type = pkt["options"].get(53, b"\x00")[0]
+            giaddr = pkt["giaddr"]
+            pool = self.pools.get(giaddr, self.pools["192.168.10.1"])
+            mac_key = (pool["vlan"], pkt["chaddr"])
+            if msg_type == 1:
+                if mac_key not in self.leases:
+                    self.leases[mac_key] = f"{pool['prefix']}.{pool['next']}"
+                    pool["next"] += 1
+                offered_ip = self.leases[mac_key]
+                reply = build_dhcp_packet(
+                    op=2, xid=pkt["xid"], chaddr=pkt["chaddr"], yiaddr=offered_ip, giaddr=giaddr,
+                    opts={
+                        53: b"\x02",
+                        1: socket.inet_aton(pool["mask"]),
+                        3: socket.inet_aton(pool["gw"]),
+                        6: socket.inet_aton(pool["dns"]),
+                        15: b"group3.vec",
+                        51: struct.pack("!I", 86400),
+                        54: socket.inet_aton(pool["gw"]),
+                    },
+                )
+                self.sock.sendto(reply, sw_addr)
+            elif msg_type == 3:
+                req_ip = socket.inet_ntoa(pkt["options"][50]) if 50 in pkt["options"] else self.leases.get(mac_key, "")
+                if self.leases.get(mac_key) == req_ip:
+                    ack = build_dhcp_packet(
+                        op=2, xid=pkt["xid"], chaddr=pkt["chaddr"], yiaddr=req_ip, giaddr=giaddr,
+                        opts={
+                            53: b"\x05",
+                            1: socket.inet_aton(pool["mask"]),
+                            3: socket.inet_aton(pool["gw"]),
+                            6: socket.inet_aton(pool["dns"]),
+                            15: b"group3.vec",
+                            51: struct.pack("!I", 86400),
+                            54: socket.inet_aton(pool["gw"]),
+                        },
+                    )
+                    self.sock.sendto(ack, sw_addr)
+
+    def stop(self):
+        self.running = False
+        self.sock.close()
+
+
+class VirtualSwitch:
+    def __init__(self, server_addr=("127.0.0.2", 67)):
+        self.server_addr = server_addr
+        self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.client_sock.bind(("127.0.0.1", 67))
+        self.client_sock.settimeout(0.2)
+        self.port_sockets = {
+            "GigabitEthernet0/1": socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
+            "GigabitEthernet0/2": socket.socket(socket.AF_INET, socket.SOCK_DGRAM),
+        }
+        self.port_sockets["GigabitEthernet0/1"].bind(("127.0.0.1", 10067))
+        self.port_sockets["GigabitEthernet0/2"].bind(("127.0.0.1", 10068))
+        for s in self.port_sockets.values():
+            s.settimeout(0.2)
+        self.trusted = {"GigabitEthernet0/1": True, "GigabitEthernet0/2": False}
+        self.server_plugged_port = "GigabitEthernet0/1"
+        self.pending_clients = {}
+        self.bindings = []
+        self.running = True
+
+    def run_client_side(self):
+        while self.running:
+            try:
+                data, c_addr = self.client_sock.recvfrom(1024)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            pkt = parse_dhcp_packet(data)
+            self.pending_clients[pkt["xid"]] = c_addr
+            self.port_sockets[self.server_plugged_port].sendto(data, self.server_addr)
+
+    def run_port_side(self, port_name):
+        sock = self.port_sockets[port_name]
+        while self.running:
+            try:
+                data, _ = sock.recvfrom(1024)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            pkt = parse_dhcp_packet(data)
+            if pkt["op"] == 2:
+                if not self.trusted.get(port_name, False):
+                    continue
+                if pkt["options"].get(53, b"\x00")[0] == 5:
+                    mac = ":".join(f"{b:02x}" for b in pkt["chaddr"])
+                    vlan = 10 if pkt["giaddr"] == "192.168.10.1" else 20
+                    self.bindings.append((mac, pkt["yiaddr"], 86400, "dhcp-snooping", vlan, port_name))
+                c_addr = self.pending_clients.get(pkt["xid"])
+                if c_addr:
+                    self.client_sock.sendto(data, c_addr)
+
+    def start(self):
+        threading.Thread(target=self.run_client_side, daemon=True).start()
+        for pname in self.port_sockets:
+            threading.Thread(target=self.run_port_side, args=(pname,), daemon=True).start()
+
+    def stop(self):
+        self.running = False
+        self.client_sock.close()
+        for s in self.port_sockets.values():
+            s.close()
+
+
+def dhcp_client_renew(bind_ip, mac_bytes, vlan_giaddr, xid):
+    c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    c.bind((bind_ip, 68))
+    c.settimeout(1.5)
+    try:
+        c.sendto(build_dhcp_packet(1, xid, mac_bytes, giaddr=vlan_giaddr, opts={53: b"\x01", 55: b"\x01\x03\x06\x0f"}), ("127.0.0.1", 67))
+        offer = parse_dhcp_packet(c.recvfrom(1024)[0])
+        c.sendto(build_dhcp_packet(1, xid, mac_bytes, giaddr=vlan_giaddr, opts={53: b"\x03", 50: socket.inet_aton(offer["yiaddr"]), 54: offer["options"][54]}), ("127.0.0.1", 67))
+        ack = parse_dhcp_packet(c.recvfrom(1024)[0])
+        return {
+            "ip": ack["yiaddr"],
+            "mask": socket.inet_ntoa(ack["options"][1]),
+            "gw": socket.inet_ntoa(ack["options"][3]),
+            "domain": ack["options"][15].decode(),
+        }
+    except socket.timeout:
+        return None
+    finally:
+        c.close()
+
+
+srv = RealDHCPServer()
+threading.Thread(target=srv.serve, daemon=True).start()
+sw = VirtualSwitch()
+sw.start()
+time.sleep(0.2)
+
+res_v10 = dhcp_client_renew("127.0.0.1", b"\x00\x11\x22\x33\x44\x10", "192.168.10.1", 0x1001)
+res_v20 = dhcp_client_renew("127.0.0.3", b"\x00\x11\x22\x33\x44\x20", "192.168.20.1", 0x2001)
+
+sw.server_plugged_port = "GigabitEthernet0/2"
+res_untrust = dhcp_client_renew("127.0.0.1", b"\x00\x11\x22\x33\x44\x99", "192.168.10.1", 0x3001)
+
+sw.stop()
+srv.stop()
+
+assert res_v10 and res_v10["ip"] == "192.168.10.100"
+assert res_v20 and res_v20["ip"] == "192.168.20.100"
+assert res_untrust is None
+
+print("Switch# show ip dhcp snooping")
+print("Switch DHCP snooping is enabled")
+print("DHCP snooping is configured on following VLANs:")
+print("10,20")
+print("Insertion of option 82 is disabled")
+print("")
+print("Interface                  Trusted    Allowing Releases    Rate limit (pps)")
+print("-----------------------    -------    -----------------    ----------------")
+print("GigabitEthernet0/1         yes        yes                  unlimited")
+print("GigabitEthernet0/2         no         yes                  unlimited")
+print("")
+print("Switch# show ip dhcp snooping binding")
+print("MacAddress          IpAddress        Lease(sec)  Type           VLAN  Interface")
+print("------------------  ---------------  ----------  -------------  ----  --------------------")
+for mac, ip, lease, btype, vlan, iface in sw.bindings:
+    print(f"{mac:<18}  {ip:<15}  {lease:<10}  {btype:<13}  {vlan:<4}  {iface}")
+print("")
+for res in (res_v10, res_v20):
+    print("Windows IP Configuration\n")
+    print("Ethernet adapter Ethernet:\n")
+    print(f"   Connection-specific DNS Suffix  . : {res['domain']}")
+    print(f"   IPv4 Address. . . . . . . . . . . : {res['ip']}")
+    print(f"   Subnet Mask . . . . . . . . . . . : {res['mask']}")
+    print(f"   Default Gateway . . . . . . . . . : {res['gw']}\n")
+
+print("Windows IP Configuration\n")
+print("An error occurred while renewing interface Ethernet : unable to contact your DHCP server. Request has timed out.")
+PYEOF
+
+  if ip netns add dhcp-sim 2>/dev/null; then
+    ip netns exec dhcp-sim ip link set lo up
+    ip netns exec dhcp-sim python3 /tmp/.dhcp_sim.py
+    ip netns del dhcp-sim 2>/dev/null || true
+  else
+    python3 /tmp/.dhcp_sim.py
+  fi
+  rm -f /tmp/.dhcp_sim.py
+}
+
 fn_setup_dhcp_snooping_helper() {
   clear
-  read -p "DHCP Server port [1]: " PORT_NUM
-  [ -z "$PORT_NUM" ] && PORT_NUM="1"
+  echo "1) setup linux dhcp server (1 or 2 vlans)"
+  echo "2) cisco switch dhcp snooping config"
+  echo "3) test dhcp & snooping (isolated virtual switch)"
+  read -p "Select (1-3) [3]: " DHCP_ACT
+  [ -z "$DHCP_ACT" ] && DHCP_ACT="3"
 
-  read -p "VLANs [10,20]: " VLANS
-  [ -z "$VLANS" ] && VLANS="10,20"
+  case $DHCP_ACT in
+    1) fn_setup_linux_dhcp ;;
+    2)
+      clear
+      read -p "DHCP Server port [1]: " PORT_NUM
+      [ -z "$PORT_NUM" ] && PORT_NUM="1"
+      read -p "VLANs [10,20]: " VLANS
+      [ -z "$VLANS" ] && VLANS="10,20"
 
-  echo ""
-  echo "# cisco config:"
-  echo "ip dhcp snooping"
-  echo "ip dhcp snooping vlan ${VLANS}"
-  echo "no ip dhcp snooping information option"
-  echo "interface GigabitEthernet 0/${PORT_NUM}"
-  echo " ip dhcp snooping trust"
-  echo " exit"
-  echo ""
-  echo "# verify:"
-  echo "show ip dhcp snooping"
-  echo ""
+      echo ""
+      echo "# cisco config:"
+      echo "ip dhcp snooping"
+      echo "ip dhcp snooping vlan ${VLANS}"
+      echo "no ip dhcp snooping information option"
+      echo "interface GigabitEthernet 0/${PORT_NUM}"
+      echo " ip dhcp snooping trust"
+      echo " exit"
+      echo ""
+      echo "# verify:"
+      echo "show ip dhcp snooping"
+      echo ""
+      ;;
+    3) fn_test_dhcp_isolated ;;
+  esac
 }
 
 clear
@@ -712,7 +1093,7 @@ echo "6) push gitlab branches"
 echo "7) disk cleanup"
 echo "8) register gitlab runner"
 echo "9) setup dns server (bind9 port 53)"
-echo "10) dhcp snooping config helper"
+echo "10) dhcp server & snooping"
 read -p "Select [0]: " USER_CHOICE
 
 if [ -z "$USER_CHOICE" ] || [ "$USER_CHOICE" = "0" ]; then
