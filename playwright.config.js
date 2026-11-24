@@ -26,5 +26,9 @@ module.exports = defineConfig({
     ignoreHTTPSErrors: true, // ข้ามแจ้งเตือน Self-signed certificate (ถ้ามี)
     // ใช้ Google Chrome ที่อยู่ในเครื่อง
     channel: 'chrome',
+    // ชะลอความเร็วแต่ละ action (1 วินาที) ให้กรรมการและเรามองทันอย่างชัดเจน
+    launchOptions: {
+      slowMo: 1000,
+    },
   },
 });
