@@ -119,7 +119,7 @@ fn_quick_docker_caddy() {
   ufw --force enable &>/dev/null || true
 
   mkdir -p /opt/dns-server/named-conf
-  cat << 'EOF' > /opt/dns-server/named-conf/named.conf
+  cat << EOF > /opt/dns-server/named-conf/named.conf
 acl "trusted_clients" { 192.168.0.0/16; 172.16.0.0/12; 10.0.0.0/8; localhost; };
 options {
     directory "/var/cache/bind";
@@ -129,7 +129,33 @@ options {
     listen-on { any; };
     listen-on-v6 { any; };
 };
+
+zone "group3.vec" {
+    type master;
+    file "/etc/bind/db.group3.vec";
+};
 EOF
+
+  cat << EOF > /opt/dns-server/named-conf/db.group3.vec
+\$TTL    60
+@       IN      SOA     ns.group3.vec. admin.group3.vec. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                          86400 )       ; Negative Cache TTL
+;
+@       IN      NS      ns.group3.vec.
+ns      IN      A       ${SERVER_IP}
+@       IN      A       ${SERVER_IP}
+frontend IN     A       ${SERVER_IP}
+backend  IN     A       ${SERVER_IP}
+gitlab   IN     A       ${SERVER_IP}
+registry IN     A       ${SERVER_IP}
+app      IN     A       ${SERVER_IP}
+*        IN     A       ${SERVER_IP}
+EOF
+
   docker rm -f dns-server &>/dev/null || true
   docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest &>/dev/null || true
 
