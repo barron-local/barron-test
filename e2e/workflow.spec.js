@@ -4,7 +4,7 @@ test.describe.serial('E2E Test', () => {
   let context;
   let page;
 
-  const testUser = 'tnk1234';
+  const testUser = `tnk_${Math.floor(1000 + Math.random() * 9000)}`;
   const testPassword = 'Password123!';
 
   test.beforeAll(async ({ browser }) => {
