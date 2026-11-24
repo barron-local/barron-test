@@ -344,7 +344,7 @@ export default function Home() {
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button onClick={() => handleLogout(false)} className="btn-danger">
-              ออกจากระบบ (Logout)
+              ออกจากระบบ
             </button>
           </div>
         </div>

@@ -24,7 +24,7 @@ test.describe.serial('E2E Test', () => {
 
     await expect(page.locator('h2')).toContainText('ระบบบริหารจัดการผู้ใช้');
     await expect(page.locator('.user-info')).toContainText('admin');
-    await expect(page.locator('button:has-text("ออกจากระบบ (Logout)")')).toBeVisible();
+    await expect(page.locator('button:has-text("ออกจากระบบ")')).toBeVisible();
   });
 
   test('E2E-002: ผู้ใช้ส่งข้อมูลสำเร็จ', async () => {
@@ -82,7 +82,7 @@ test.describe.serial('E2E Test', () => {
       await dialog.accept();
     });
 
-    await page.click('button:has-text("ออกจากระบบ (Logout)")');
+    await page.click('button:has-text("ออกจากระบบ")');
 
     await expect(page.locator('button:has-text("เข้าสู่ระบบ")')).toBeVisible();
     await expect(page.locator('input[placeholder="กรอกชื่อผู้ใช้..."]')).toBeVisible();
