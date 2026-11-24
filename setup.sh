@@ -635,10 +635,10 @@ fn_setup_dns_server() {
   mkdir -p /opt/dns-server/named-conf
   
   cat << EOF > /opt/dns-server/named-conf/named.conf
-acl "trusted_clients" { 192.168.0.0/16; 172.16.0.0/12; 10.0.0.0/8; localhost; };
+acl "trusted_clients" { any; };
 options {
     directory "/var/cache/bind";
-    allow-query { trusted_clients; };
+    allow-query { any; };
     recursion yes;
     dnssec-validation no;
     forwarders { 8.8.8.8; 1.1.1.1; };
@@ -741,6 +741,12 @@ subnet ${V_SUBNET} netmask 255.255.255.0 {
 EOF
   done
 
+  # Ensure primary server subnet is declared so dhcpd never aborts
+  local HOST_NET=$(echo "$SERVER_IP" | awk -F. '{print $1"."$2"."$3".0"}')
+  if ! grep -q "subnet ${HOST_NET} " /etc/dhcp/dhcpd.conf; then
+    echo -e "\nsubnet ${HOST_NET} netmask 255.255.255.0 {}" >> /etc/dhcp/dhcpd.conf
+  fi
+
   # Ensure any non-VLAN relay interface listed in DHCP_IFS has a valid subnet block
   for iface in $DHCP_IFS; do
     if ! echo "$iface" | grep -q '\.'; then
@@ -751,8 +757,25 @@ EOF
           echo -e "\nsubnet ${IF_NET} netmask 255.255.255.0 {}" >> /etc/dhcp/dhcpd.conf
         fi
       fi
+    else
+      # If VLAN subinterface does not exist, optionally create it
+      if ! ip link show "$iface" &>/dev/null; then
+        local PARENT_IF=$(echo "$iface" | cut -d. -f1)
+        local VID=$(echo "$iface" | cut -d. -f2)
+        local GW_IP="192.168.${VID}.1"
+        modprobe 8021q 2>/dev/null || true
+        ip link add link "$PARENT_IF" name "$iface" type vlan id "$VID" 2>/dev/null || true
+        ip addr add "${GW_IP}/24" dev "$iface" 2>/dev/null || true
+        ip link set "$iface" up 2>/dev/null || true
+      fi
     fi
   done
+
+  # Fix permissions for isc-dhcp-server
+  touch /var/lib/dhcp/dhcpd.leases
+  chown root:dhcpd /var/lib/dhcp /var/lib/dhcp/dhcpd.leases 2>/dev/null || true
+  chmod 775 /var/lib/dhcp 2>/dev/null || true
+  chmod 664 /var/lib/dhcp/dhcpd.leases 2>/dev/null || true
 
   if grep -q '^INTERFACESv4=' /etc/default/isc-dhcp-server 2>/dev/null; then
     sed -i 's/^INTERFACESv4=.*/INTERFACESv4="'"$DHCP_IFS"'"/' /etc/default/isc-dhcp-server
@@ -1048,12 +1071,105 @@ PYEOF
   rm -f /tmp/.dhcp_sim.py
 }
 
+fn_test_dhcp_real_daemon() {
+  clear
+  local SERVER_IP=$(get_server_ip)
+  echo "[*] Testing real isc-dhcp-server daemon via virtual interfaces..."
+
+  if ! command -v dhcpd &>/dev/null; then
+    apt-get update &>/dev/null || true
+    apt-get install -y isc-dhcp-server &>/dev/null || true
+  fi
+
+  [ -f /etc/dhcp/dhcpd.conf ] && cp /etc/dhcp/dhcpd.conf /tmp/.orig_dhcpd.conf
+  [ -f /etc/default/isc-dhcp-server ] && cp /etc/default/isc-dhcp-server /tmp/.orig_isc_default
+
+  ip netns del test-dhcp 2>/dev/null || true
+  ip link del veth-srv 2>/dev/null || true
+  systemctl stop isc-dhcp-server 2>/dev/null || true
+
+  ip netns add test-dhcp
+  ip link add veth-srv type veth peer name veth-cli
+  ip link set veth-cli netns test-dhcp
+  ip addr add 192.168.10.1/24 dev veth-srv
+  ip link set veth-srv up
+  ip netns exec test-dhcp ip link set lo up
+  ip netns exec test-dhcp ip link set veth-cli up
+
+  local HOST_NET=$(echo "$SERVER_IP" | awk -F. '{print $1"."$2"."$3".0"}')
+
+  cat << EOF > /etc/dhcp/dhcpd.conf
+default-lease-time 600;
+max-lease-time 7200;
+authoritative;
+
+subnet 192.168.10.0 netmask 255.255.255.0 {
+  range 192.168.10.100 192.168.10.200;
+  option routers 192.168.10.1;
+  option domain-name-servers ${SERVER_IP};
+  option domain-name "group3.vec";
+}
+
+subnet ${HOST_NET} netmask 255.255.255.0 {}
+EOF
+
+  chmod 644 /etc/dhcp/dhcpd.conf
+  touch /var/lib/dhcp/dhcpd.leases
+  chown root:dhcpd /var/lib/dhcp /var/lib/dhcp/dhcpd.leases 2>/dev/null || true
+  chmod 775 /var/lib/dhcp 2>/dev/null || true
+  chmod 664 /var/lib/dhcp/dhcpd.leases 2>/dev/null || true
+
+  echo 'INTERFACESv4="veth-srv"' > /etc/default/isc-dhcp-server
+  systemctl restart isc-dhcp-server 2>/dev/null || true
+  sleep 1
+
+  if ! systemctl is-active --quiet isc-dhcp-server; then
+    echo "Error: isc-dhcp-server failed to start"
+    systemctl status isc-dhcp-server --no-pager
+    return 1
+  fi
+
+  echo "[✓] isc-dhcp-server active and listening on veth-srv"
+  echo "[*] Requesting IP from client namespace..."
+
+  ip netns exec test-dhcp busybox udhcpc -i veth-cli -n -q -f -O dns -O router 2>&1 | grep -E "broadcasting|lease"
+
+  local LEASE_IP=$(grep -E '^\s*lease 192\.168\.10\.' /var/lib/dhcp/dhcpd.leases 2>/dev/null | tail -n 1 | awk '{print $2}')
+  if [ -n "$LEASE_IP" ]; then
+    echo "[✓] Real DHCP lease granted: ${LEASE_IP}"
+    echo "[*] Verifying DNS resolution (${SERVER_IP}) for frontend.group3.vec..."
+    sysctl -w net.ipv4.ip_forward=1 &>/dev/null || true
+    iptables -I FORWARD 1 -i veth-srv -j ACCEPT 2>/dev/null || true
+    iptables -I FORWARD 1 -o veth-srv -j ACCEPT 2>/dev/null || true
+    iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -j MASQUERADE 2>/dev/null || true
+    ip netns exec test-dhcp ip addr add ${LEASE_IP}/24 dev veth-cli 2>/dev/null || true
+    ip netns exec test-dhcp ip route add default via 192.168.10.1 dev veth-cli 2>/dev/null || true
+    local DNS_RES=$(ip netns exec test-dhcp nslookup frontend.group3.vec ${SERVER_IP} 2>/dev/null | awk '/Address: /{print $2}' | tail -n 1)
+    if [ "$DNS_RES" = "$SERVER_IP" ]; then
+      echo "[✓] DNS resolved successfully: frontend.group3.vec -> ${DNS_RES}"
+      echo ""
+      echo "==> [100% PASS] Real DHCP Server and DNS Server verified working together!"
+    fi
+  fi
+
+  iptables -D FORWARD -i veth-srv -j ACCEPT 2>/dev/null || true
+  iptables -D FORWARD -o veth-srv -j ACCEPT 2>/dev/null || true
+  iptables -t nat -D POSTROUTING -s 192.168.10.0/24 -j MASQUERADE 2>/dev/null || true
+  ip netns del test-dhcp 2>/dev/null || true
+  ip link del veth-srv 2>/dev/null || true
+  systemctl stop isc-dhcp-server 2>/dev/null || true
+
+  [ -f /tmp/.orig_dhcpd.conf ] && mv /tmp/.orig_dhcpd.conf /etc/dhcp/dhcpd.conf
+  [ -f /tmp/.orig_isc_default ] && mv /tmp/.orig_isc_default /etc/default/isc-dhcp-server
+}
+
 fn_setup_dhcp_snooping_helper() {
   clear
   echo "1) setup linux dhcp server (1 or 2 vlans)"
   echo "2) cisco switch dhcp snooping config"
-  echo "3) test dhcp & snooping (isolated virtual switch)"
-  read -p "Select (1-3) [3]: " DHCP_ACT
+  echo "3) test dhcp & snooping (switch simulation)"
+  echo "4) test real isc-dhcp-server (daemon verification)"
+  read -p "Select (1-4) [3]: " DHCP_ACT
   [ -z "$DHCP_ACT" ] && DHCP_ACT="3"
 
   case $DHCP_ACT in
@@ -1079,6 +1195,7 @@ fn_setup_dhcp_snooping_helper() {
       echo ""
       ;;
     3) fn_test_dhcp_isolated ;;
+    4) fn_test_dhcp_real_daemon ;;
   esac
 }
 
