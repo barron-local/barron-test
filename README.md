@@ -70,7 +70,27 @@
 
 ---
 
-## 4. รายละเอียดข้อกำหนด RESTful API Endpoints (API Specification)
+## 4. ข้อกำหนด RESTful API และการเลือกใช้ HTTP Method
+
+### ตารางสรุปการเลือกใช้ HTTP Method ตามลักษณะงาน (REST Standards)
+
+| Method | Endpoint | ลักษณะการทำงาน | เหตุผลการเลือกใช้ |
+| :--- | :--- | :--- | :--- |
+| **`POST`** | `/api/login` | ตรวจสอบ Username/Password และออก Token | ข้อมูลสำคัญ ไม่ส่งผ่าน URL, ไม่เป็น Idempotent |
+| **`POST`** | `/api/logout` | ออกจากระบบ ปรับสถานะเป็น offline | มีการเปลี่ยนแปลงสถานะบน Server |
+| **`GET`** | `/api/health` | ตรวจสอบความพร้อมของระบบ | ดึงสถานะอย่างเดียว (Read-only) ไม่มีผลข้างเคียง |
+| **`GET`** | `/api/me` | ดึงข้อมูล Profile ของผู้ใช้ปัจจุบัน | ดึงข้อมูลส่วนบุคคล (Read-only) ตาม Token |
+| **`GET`** | `/api/users` | ดึงรายชื่อผู้ใช้ทั้งหมด (รองรับ Filter & Pagination) | ดึงข้อมูล (Read-only) สามารถ Cache ผลลัพธ์ได้ |
+| **`GET`** | `/api/users/:id` | ดึงข้อมูลผู้ใช้รายคนตาม Path Parameter | เข้าถึง Resource รายตัวด้วย ID โดยไม่แก้ไขข้อมูล |
+| **`POST`** | `/api/users` | สร้างผู้ใช้ใหม่ลงฐานข้อมูล (พร้อมแนบไฟล์) | สร้าง Resource ใหม่บน Server |
+| **`POST`** | `/api/users/:id/upload` | อัปโหลดไฟล์แนบประจำตัวผู้ใช้ | รับข้อมูล Binary แบบ `multipart/form-data` |
+| **`PUT`** | `/api/users/:id` | แก้ไขข้อมูลผู้ใช้แบบแทนที่ทั้งหมด (Replace) | อัปเดตข้อมูลทั้งก้อน (Full Replacement) |
+| **`PATCH`** | `/api/users/:id` | แก้ไขข้อมูลผู้ใช้เฉพาะบางฟิลด์ (Partial Update) | อัปเดตเฉพาะฟิลด์ที่ส่งมา ไม่กระทบฟิลด์อื่น |
+| **`DELETE`** | `/api/users/:id` | ลบผู้ใช้และไฟล์แนบออกจากระบบ | ลบ Resource ออกจากระบบถาวร |
+
+---
+
+### รายละเอียดข้อกำหนดแต่ละ Endpoint
 
 ### 4.1 ตรวจสอบสถานะระบบ (Health Check)
 - **Method:** `GET`
