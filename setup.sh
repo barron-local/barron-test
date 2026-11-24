@@ -693,7 +693,6 @@ EOF
 ;
 @       IN      NS      ns.group3.vec.
 ${IP_D} IN      PTR     ns.group3.vec.
-${IP_D} IN      PTR     frontend.group3.vec.
 EOF
 
   chmod -R 755 /opt/dns-server/named-conf
