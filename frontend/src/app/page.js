@@ -343,15 +343,6 @@ export default function Home() {
             </small>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <a
-              href="/docs"
-              target="_blank"
-              rel="noreferrer"
-              className="btn-outline"
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', padding: '8px 14px' }}
-            >
-              📚 เอกสาร API (/docs)
-            </a>
             <button onClick={() => handleLogout(false)} className="btn-danger">
               ออกจากระบบ (Logout)
             </button>
