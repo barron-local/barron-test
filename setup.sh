@@ -623,6 +623,11 @@ fn_register_gitlab_runner_standalone() {
 fn_setup_dns_server() {
   clear
   local SERVER_IP=$(get_server_ip)
+  local IP_A=$(echo "$SERVER_IP" | cut -d. -f1)
+  local IP_B=$(echo "$SERVER_IP" | cut -d. -f2)
+  local IP_C=$(echo "$SERVER_IP" | cut -d. -f3)
+  local IP_D=$(echo "$SERVER_IP" | cut -d. -f4)
+  local REV_ZONE="${IP_C}.${IP_B}.${IP_A}.in-addr.arpa"
 
   # ปิด service ที่แย่งพอร์ต 53 บน Ubuntu
   systemctl stop systemd-resolved 2>/dev/null || true
@@ -650,6 +655,11 @@ zone "group3.vec" {
     type master;
     file "/etc/bind/db.group3.vec";
 };
+
+zone "${REV_ZONE}" {
+    type master;
+    file "/etc/bind/db.${IP_A}.${IP_B}.${IP_C}";
+};
 EOF
 
   cat << EOF > /opt/dns-server/named-conf/db.group3.vec
@@ -672,6 +682,20 @@ app      IN     A       ${SERVER_IP}
 *        IN     A       ${SERVER_IP}
 EOF
 
+  cat << EOF > /opt/dns-server/named-conf/db.${IP_A}.${IP_B}.${IP_C}
+\$TTL    60
+@       IN      SOA     ns.group3.vec. admin.group3.vec. (
+                              1         ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                          86400 )       ; Negative Cache TTL
+;
+@       IN      NS      ns.group3.vec.
+${IP_D} IN      PTR     ns.group3.vec.
+${IP_D} IN      PTR     frontend.group3.vec.
+EOF
+
   chmod -R 755 /opt/dns-server/named-conf
   docker rm -f dns-server &>/dev/null || true
   if ! docker run -d --name dns-server --restart always -e TZ=UTC -e BIND9_USER=root -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest; then
@@ -685,7 +709,7 @@ EOF
   fi
 
   echo ""
-  echo "dns server ready on port 53"
+  echo "dns server ready on port 53 (forward & reverse PTR zones)"
   echo "test: nslookup frontend.group3.vec ${SERVER_IP}"
 }
 
