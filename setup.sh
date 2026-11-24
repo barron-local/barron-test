@@ -626,22 +626,26 @@ fn_setup_dns_server() {
   local SERVER_IP=""
   local DNS_HOSTNAME=""
 
-  # Detect if arguments are IP or Hostname, otherwise auto-detect
+  # Detect if arguments are IP or Hostname from command line
   if [ -n "$1" ]; then
     if echo "$1" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
       SERVER_IP="$1"
       DNS_HOSTNAME="${2:-dns}"
     else
       DNS_HOSTNAME="$1"
-      SERVER_IP="${2:-$DETECTED_IP}"
+      SERVER_IP="$2"
     fi
   fi
 
-  [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
-  echo "[*] Server IP (Auto-detected): ${SERVER_IP}"
+  if [ -z "$SERVER_IP" ]; then
+    echo "[*] Server IP (Auto-detected): ${DETECTED_IP}"
+    read -p "Server IP [Enter to use ${DETECTED_IP} / or type custom IP]: " SERVER_IP
+    [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
+  fi
+  echo "[*] Using Server IP: ${SERVER_IP}"
 
   if [ -z "$DNS_HOSTNAME" ]; then
-    read -p "DNS Hostname [dns]: " DNS_HOSTNAME
+    read -p "DNS Hostname [Enter to use 'dns' / or type custom name]: " DNS_HOSTNAME
     [ -z "$DNS_HOSTNAME" ] && DNS_HOSTNAME="dns"
   fi
   echo "[*] DNS Hostname: ${DNS_HOSTNAME}.group3.vec"
