@@ -5,7 +5,7 @@ const { test, expect } = require('@playwright/test');
  * แยกเป็น 4 กรณีทดสอบ (4 Tests) เพื่อให้โชว์ผ่านครบ 4 ข้อ (4 passed) ตามเกณฑ์กรรมการ
  * ใช้ Browser Context เดียวกัน ทำให้ Login แค่ครั้งเดียวในข้อแรก แล้วข้อถัดไปทำต่อได้ทันที!
  */
-test.describe.serial('E2E Test Workflow - ระบบบริหารจัดการผู้ใช้', () => {
+test.describe.serial('E2E Test', () => {
   /** @type {import('@playwright/test').BrowserContext} */
   let context;
   /** @type {import('@playwright/test').Page} */
@@ -24,7 +24,7 @@ test.describe.serial('E2E Test Workflow - ระบบบริหารจั�
     await context.close();
   });
 
-  test('E2E-001: ผู้ใช้เข้าสู่ระบบสำเร็จ (Login แล้วเห็นหน้า Dashboard)', async () => {
+  test('E2E-001: ผู้ใช้เข้าสู่ระบบสำเร็จ', async () => {
     await page.goto('/');
     await page.fill('input[placeholder="กรอกชื่อผู้ใช้..."]', 'admin');
     await page.fill('input[placeholder="กรอกรหัสผ่าน..."]', 'admin');
@@ -37,7 +37,7 @@ test.describe.serial('E2E Test Workflow - ระบบบริหารจั�
     await page.screenshot({ path: 'playwright-report/screenshots/E2E-001-login-success.png' });
   });
 
-  test('E2E-002: ผู้ใช้ส่งข้อมูลสำเร็จ (กรอกฟอร์มเพิ่มผู้ใช้ใหม่แล้วบันทึกสำเร็จ)', async () => {
+  test('E2E-002: ผู้ใช้ส่งข้อมูลสำเร็จ', async () => {
     // ทำงานต่อใน Dashboard ได้ทันที ไม่ต้อง Login ใหม่
     await page.fill('input[placeholder="ชื่อผู้ใช้ (Username)"]', testUser);
     await page.fill('input[placeholder="รหัสผ่าน (Password)"]', testPassword);
@@ -51,7 +51,7 @@ test.describe.serial('E2E Test Workflow - ระบบบริหารจั�
     await page.screenshot({ path: 'playwright-report/screenshots/E2E-002-create-user-success.png' });
   });
 
-  test('E2E-003: ค้นหาข้อมูลในระบบ (Search & Filter)', async () => {
+  test('E2E-003: ผู้ใช้ค้นหาข้อมูลสำเร็จ', async () => {
     // ค้นหาข้อมูลต่อได้ทันที
     await page.fill('input[placeholder="ค้นหาชื่อผู้ใช้ (Search)..."]', testUser);
     await page.click('button:has-text("ค้นหาข้อมูล")');
@@ -63,7 +63,7 @@ test.describe.serial('E2E Test Workflow - ระบบบริหารจั�
     await page.screenshot({ path: 'playwright-report/screenshots/E2E-003-search-success.png' });
   });
 
-  test('E2E-004: ออกจากระบบสำเร็จ (Logout แล้วกลับสู่หน้า Login)', async () => {
+  test('E2E-004: ผู้ใช้ออกจากระบบสำเร็จ', async () => {
     page.once('dialog', async dialog => {
       await dialog.accept();
     });

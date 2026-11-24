@@ -6,3 +6,5 @@ uploads/
 *.vsix
 runner/config.toml
 runner/.runner_system_id
+playwright-report/
+test-results/
