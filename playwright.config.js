@@ -17,7 +17,7 @@ module.exports = defineConfig({
   use: {
     baseURL: process.env.BASE_URL || 'https://frontend.mydomain.lab',
     headless: false,
-    screenshot: 'on',
+    screenshot: 'off',
     video: 'off',
     ignoreHTTPSErrors: true,
     channel: 'chrome',

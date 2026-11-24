@@ -34,7 +34,6 @@ test.describe.serial('E2E Test', () => {
     await expect(page.locator('.user-info')).toContainText('admin');
     await expect(page.locator('button:has-text("ออกจากระบบ (Logout)")')).toBeVisible();
 
-    await page.screenshot({ path: 'playwright-report/screenshots/E2E-001-login-success.png' });
   });
 
   test('E2E-002: ผู้ใช้ส่งข้อมูลสำเร็จ', async () => {
@@ -48,7 +47,6 @@ test.describe.serial('E2E Test', () => {
     const tableContent = await page.textContent('table');
     expect(tableContent).toContain(testUser);
 
-    await page.screenshot({ path: 'playwright-report/screenshots/E2E-002-create-user-success.png' });
   });
 
   test('E2E-003: ผู้ใช้ค้นหาข้อมูลสำเร็จ', async () => {
@@ -60,7 +58,6 @@ test.describe.serial('E2E Test', () => {
     const tableContent = await page.textContent('table');
     expect(tableContent).toContain(testUser);
 
-    await page.screenshot({ path: 'playwright-report/screenshots/E2E-003-search-success.png' });
   });
 
   test('E2E-004: ผู้ใช้ออกจากระบบสำเร็จ', async () => {
@@ -73,7 +70,6 @@ test.describe.serial('E2E Test', () => {
     await expect(page.locator('button:has-text("เข้าสู่ระบบ")')).toBeVisible();
     await expect(page.locator('input[placeholder="กรอกชื่อผู้ใช้..."]')).toBeVisible();
 
-    await page.screenshot({ path: 'playwright-report/screenshots/E2E-004-logout-success.png' });
   });
 
 });
