@@ -728,16 +728,26 @@ fn_setup_linux_dhcp() {
   local DEFAULT_IF=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5}' | head -n 1)
   [ -z "$DEFAULT_IF" ] && DEFAULT_IF="ens33"
 
-  read -p "VLAN IDs (e.g. 10 or 10,20) [10,20]: " VLAN_LIST
+  echo "Select DHCP Architecture:"
+  echo "1) DHCP Relay via Switch / Single physical cable (${DEFAULT_IF}) [Recommended]"
+  echo "2) 802.1Q Trunk with VLAN subinterfaces (${DEFAULT_IF}.10, ${DEFAULT_IF}.20...)"
+  read -p "Select (1-2) [1]: " NET_MODE
+  [ -z "$NET_MODE" ] && NET_MODE="1"
+
+  read -p "VLAN IDs (e.g. 10,20 or 10,20,30) [10,20]: " VLAN_LIST
   [ -z "$VLAN_LIST" ] && VLAN_LIST="10,20"
 
-  local DEFAULT_DHCP_IFS=""
-  for v in $(echo "$VLAN_LIST" | tr ',' ' '); do
-    DEFAULT_DHCP_IFS="${DEFAULT_DHCP_IFS} ${DEFAULT_IF}.${v}"
-  done
-  DEFAULT_DHCP_IFS=$(echo "$DEFAULT_DHCP_IFS" | xargs)
+  if [ "$NET_MODE" = "1" ]; then
+    DEFAULT_DHCP_IFS="${DEFAULT_IF}"
+  else
+    local DEFAULT_DHCP_IFS=""
+    for v in $(echo "$VLAN_LIST" | tr ',' ' '); do
+      DEFAULT_DHCP_IFS="${DEFAULT_DHCP_IFS} ${DEFAULT_IF}.${v}"
+    done
+    DEFAULT_DHCP_IFS=$(echo "$DEFAULT_DHCP_IFS" | xargs)
+  fi
 
-  read -p "Listen interfaces (space separated) [${DEFAULT_DHCP_IFS}]: " DHCP_IFS
+  read -p "Listen interfaces [${DEFAULT_DHCP_IFS}]: " DHCP_IFS
   [ -z "$DHCP_IFS" ] && DHCP_IFS="$DEFAULT_DHCP_IFS"
 
   if ! command -v dhcpd &>/dev/null; then
@@ -752,6 +762,7 @@ option domain-name-servers ${SERVER_IP};
 default-lease-time 600;
 max-lease-time 7200;
 authoritative;
+stash-agent-options true;
 EOF
 
   for v in $(echo "$VLAN_LIST" | tr ',' ' '); do
@@ -1212,13 +1223,14 @@ fn_setup_dhcp_snooping_helper() {
     1) fn_setup_linux_dhcp ;;
     2)
       clear
-      read -p "DHCP Server port [1]: " PORT_NUM
+      local SERVER_IP=$(get_server_ip)
+      read -p "DHCP Server switch port [1]: " PORT_NUM
       [ -z "$PORT_NUM" ] && PORT_NUM="1"
       read -p "VLANs [10,20]: " VLANS
       [ -z "$VLANS" ] && VLANS="10,20"
 
       echo ""
-      echo "# cisco config:"
+      echo "# 1. Cisco DHCP Snooping Configuration:"
       echo "ip dhcp snooping"
       echo "ip dhcp snooping vlan ${VLANS}"
       echo "no ip dhcp snooping information option"
@@ -1226,8 +1238,16 @@ fn_setup_dhcp_snooping_helper() {
       echo " ip dhcp snooping trust"
       echo " exit"
       echo ""
-      echo "# verify:"
+      echo "# 2. (If L3 Switch) DHCP Relay Helper Address:"
+      for v in $(echo "$VLANS" | tr ',' ' '); do
+        echo "interface Vlan ${v}"
+        echo " ip helper-address ${SERVER_IP}"
+        echo " exit"
+      done
+      echo ""
+      echo "# 3. Verification Commands:"
       echo "show ip dhcp snooping"
+      echo "show ip dhcp snooping binding"
       echo ""
       ;;
     3) fn_test_dhcp_isolated ;;
