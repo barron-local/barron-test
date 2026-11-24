@@ -82,6 +82,11 @@ test.describe('E2E Test Workflow - ระบบบริหารจัดกา
     await page.click('button:has-text("เข้าสู่ระบบ")');
     await expect(page.locator('h2')).toContainText('ระบบบริหารจัดการผู้ใช้');
 
+    // ดักรับกล่องแจ้งเตือน confirm dialog ("คุณต้องการออกจากระบบใช่หรือไม่?") แล้วกดยืนยันอัตโนมัติ
+    page.once('dialog', async dialog => {
+      await dialog.accept();
+    });
+
     // 1. กดปุ่มออกจากระบบ
     await page.click('button:has-text("ออกจากระบบ (Logout)")');
 
