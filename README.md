@@ -13,50 +13,20 @@
 
 ---
 
-## 2. การออกแบบฐานข้อมูล (Database Schema & Relational Design)
-ฐานข้อมูลชื่อ `my_app` ประกอบด้วย 4 ตารางที่มีความสัมพันธ์กันตามหลัก Relational Integrity (Foreign Key CASCADE):
+## 2. โครงสร้างฐานข้อมูล (Database Schema)
 
-```
-+-------------------+       1:N       +-------------------+
-|       users       | <-------------- |        log        |
-+-------------------+                 +-------------------+
-| PK  id (INT)      |                 | PK  id (INT)      |
-|     username      |                 | FK  user_id (INT) |
-|     password      |                 |     logged_at     |
-|     role          |                 +-------------------+
-+-------------------+
-  |               |
-  | 1:1           | 1:N
-  v               v
-+-------------------+   +-------------------+
-|      status       |   |       files       |
-+-------------------+   +-------------------+
-| PK  id (INT)      |   | PK  id (INT)      |
-| FK  user_id (INT) |   | FK  user_id (INT) |
-|     state (on/off)|   |     filename      |
-+-------------------+   |     uploaded_at   |
-                        +-------------------+
-```
+### ความสัมพันธ์ระหว่างตาราง (Relational Design)
+| ตารางหลัก | ตารางที่เชื่อมโยง | ความสัมพันธ์ | Foreign Key (CASCADE) |
+| :--- | :--- | :--- | :--- |
+| `users` | `status` | 1:1 | `status.user_id` -> `users.id` |
+| `users` | `log` | 1:N | `log.user_id` -> `users.id` |
+| `users` | `files` | 1:N | `files.user_id` -> `users.id` |
 
-### รายละเอียดตาราง:
-1. **`users`** : ตารางข้อมูลผู้ใช้งานหลัก
-   - `id`: INT AUTO_INCREMENT PRIMARY KEY
-   - `username`: VARCHAR(50) NOT NULL UNIQUE
-   - `password`: VARCHAR(255) NOT NULL
-   - `role`: ENUM('admin', 'editonly', 'readonly') DEFAULT 'readonly'
-2. **`log`** : ตารางบันทึกประวัติการเข้าสู่ระบบ
-   - `id`: INT AUTO_INCREMENT PRIMARY KEY
-   - `user_id`: INT NOT NULL (FK -> users.id ON DELETE CASCADE)
-   - `logged_at`: DATETIME DEFAULT CURRENT_TIMESTAMP
-3. **`status`** : ตารางสถานะการใช้งาน (Online/Offline)
-   - `id`: INT AUTO_INCREMENT PRIMARY KEY
-   - `user_id`: INT NOT NULL UNIQUE (FK -> users.id ON DELETE CASCADE)
-   - `state`: ENUM('on', 'off') DEFAULT 'off'
-4. **`files`** : ตารางบันทึกข้อมูลไฟล์แนบ
-   - `id`: INT AUTO_INCREMENT PRIMARY KEY
-   - `user_id`: INT NOT NULL (FK -> users.id ON DELETE CASCADE)
-   - `filename`: VARCHAR(255) NOT NULL
-   - `uploaded_at`: DATETIME DEFAULT CURRENT_TIMESTAMP
+### ฟิลด์ในแต่ละตาราง
+- **`users`**: `id` (PK, INT), `username` (VARCHAR, UNIQUE), `password` (VARCHAR), `role` (ENUM: admin, editonly, readonly)
+- **`status`**: `id` (PK, INT), `user_id` (FK, UNIQUE), `state` (ENUM: on, off)
+- **`log`**: `id` (PK, INT), `user_id` (FK), `logged_at` (DATETIME)
+- **`files`**: `id` (PK, INT), `user_id` (FK), `filename` (VARCHAR), `uploaded_at` (DATETIME)
 
 ---
 
