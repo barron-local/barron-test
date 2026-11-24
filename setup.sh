@@ -623,9 +623,15 @@ fn_register_gitlab_runner_standalone() {
 fn_setup_dns_server() {
   clear
   local SERVER_IP=$(get_server_ip)
-  echo "==> กำลังตั้งค่า DNS Server (BIND9) สำหรับโดเมน .group3.vec บนพอร์ต 53..."
-  
-  ufw allow 53 &>/dev/null || true
+
+  # ปิด service ที่แย่งพอร์ต 53 บน Ubuntu
+  systemctl stop systemd-resolved 2>/dev/null || true
+  systemctl disable systemd-resolved 2>/dev/null || true
+  rm -f /etc/resolv.conf 2>/dev/null || true
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+
+  ufw allow 53/tcp &>/dev/null || true
+  ufw allow 53/udp &>/dev/null || true
   mkdir -p /opt/dns-server/named-conf
   
   cat << EOF > /opt/dns-server/named-conf/named.conf
