@@ -1355,6 +1355,188 @@ EOF
   ip -4 addr show "$IFACE" 2>/dev/null | grep inet
 }
 
+fn_manage_reverse_proxy() {
+  clear
+  local SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local CADDYFILE="${SCRIPT_DIR}/Caddyfile"
+  [ ! -f "$CADDYFILE" ] && [ -f "./Caddyfile" ] && CADDYFILE="./Caddyfile"
+  [ ! -f "$CADDYFILE" ] && [ -f "/home/devops3/Desktop/devops-tnk/Caddyfile" ] && CADDYFILE="/home/devops3/Desktop/devops-tnk/Caddyfile"
+
+  if [ ! -f "$CADDYFILE" ]; then
+    echo "Error: Caddyfile not found at ${CADDYFILE}"
+    return 1
+  fi
+
+  local ACTION="$1"
+  if [ -z "$ACTION" ]; then
+    echo "====================================================="
+    echo "       Caddy Reverse Proxy Manager (Easy Setup)      "
+    echo "====================================================="
+    echo ""
+    echo "Current Active Routes in Caddyfile:"
+    python3 -c "
+import re
+with open('$CADDYFILE', 'r') as f:
+    text = f.read()
+blocks = re.findall(r'(https?://[^\s,{]+(?:,\s*https?://[^\s,{]+)*)\s*\{\s*reverse_proxy\s+([^\s}]+)\s*\}', text)
+for i, (hosts, ups) in enumerate(blocks, 1):
+    h = re.sub(r'^https?://', '', hosts.split(',')[0].strip())
+    print(f'  [{i}] http(s)://{h:<25} -> {ups}')
+" 2>/dev/null || grep -E 'reverse_proxy' "$CADDYFILE"
+    echo ""
+    echo "Choose an action:"
+    echo "1) Quick change base domain (e.g. group3.vec -> team3.vec)"
+    echo "2) Edit an existing route (change URL or target)"
+    echo "3) Add a new proxy route"
+    echo "4) Delete a proxy route"
+    echo "5) View full Caddyfile"
+    echo "6) Reload / Restart Caddy"
+    echo "0) Back"
+    read -p "Select (0-6) [1]: " ACTION
+    [ -z "$ACTION" ] && ACTION="1"
+  fi
+
+  case $ACTION in
+    1|domain)
+      local CUR_DOM=$(grep -oE 'https?://[a-zA-Z0-9_-]+\.[a-zA-Z0-9_.-]+' "$CADDYFILE" | head -n 1 | sed -E 's|https?://[^.]+\.||')
+      [ -z "$CUR_DOM" ] && CUR_DOM="group3.vec"
+      local NEW_DOM="$2"
+      if [ -z "$NEW_DOM" ]; then
+        echo "Current Domain: ${CUR_DOM}"
+        read -p "New Domain [${CUR_DOM}]: " NEW_DOM
+        [ -z "$NEW_DOM" ] && NEW_DOM="$CUR_DOM"
+      fi
+
+      if [ "$NEW_DOM" != "$CUR_DOM" ]; then
+        cp "$CADDYFILE" "${CADDYFILE}.bak"
+        sed -i "s/${CUR_DOM}/${NEW_DOM}/g" "$CADDYFILE"
+        sed -i "s/${CUR_DOM}/${NEW_DOM}/g" /etc/hosts 2>/dev/null || true
+        echo "[✓] Updated ${CADDYFILE}: ${CUR_DOM} -> ${NEW_DOM}"
+        docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart caddy 2>/dev/null || true
+        echo "[✓] Caddy reloaded successfully with new domain: ${NEW_DOM}"
+      else
+        echo "Domain unchanged: ${CUR_DOM}"
+      fi
+      ;;
+    2|edit)
+      python3 -c "
+import re
+with open('$CADDYFILE', 'r') as f:
+    text = f.read()
+blocks = re.findall(r'(https?://[^\s,{]+(?:,\s*https?://[^\s,{]+)*)\s*\{\s*reverse_proxy\s+([^\s}]+)\s*\}', text)
+for i, (hosts, ups) in enumerate(blocks, 1):
+    h = re.sub(r'^https?://', '', hosts.split(',')[0].strip())
+    print(f'  {i}) {h} -> {ups}')
+"
+      read -p "Select route number to edit: " R_IDX
+      [ -z "$R_IDX" ] && return 0
+
+      python3 -c "
+import re
+with open('$CADDYFILE', 'r') as f:
+    text = f.read()
+blocks = re.findall(r'((https?://[^\s,{]+(?:,\s*https?://[^\s,{]+)*)\s*\{\s*reverse_proxy\s+([^\s}]+)\s*\})', text)
+idx = int('$R_IDX') - 1
+if 0 <= idx < len(blocks):
+    full_block, hosts, ups = blocks[idx]
+    h = re.sub(r'^https?://', '', hosts.split(',')[0].strip())
+    print(f'SELECTED_HOST=\"{h}\"')
+    print(f'SELECTED_UPSTREAM=\"{ups}\"')
+" > /tmp/.caddy_edit_tmp
+      source /tmp/.caddy_edit_tmp 2>/dev/null || true
+      rm -f /tmp/.caddy_edit_tmp
+
+      if [ -n "$SELECTED_HOST" ]; then
+        read -p "Domain URL [${SELECTED_HOST}]: " NEW_HOST
+        [ -z "$NEW_HOST" ] && NEW_HOST="$SELECTED_HOST"
+        read -p "Upstream Target [${SELECTED_UPSTREAM}]: " NEW_UPS
+        [ -z "$NEW_UPS" ] && NEW_UPS="$SELECTED_UPSTREAM"
+
+        cp "$CADDYFILE" "${CADDYFILE}.bak"
+        python3 -c "
+import re
+with open('$CADDYFILE', 'r') as f:
+    text = f.read()
+blocks = list(re.finditer(r'(https?://[^\s,{]+(?:,\s*https?://[^\s,{]+)*)\s*\{\s*reverse_proxy\s+([^\s}]+)\s*\}', text))
+idx = int('$R_IDX') - 1
+if 0 <= idx < len(blocks):
+    m = blocks[idx]
+    new_blk = f'http://$NEW_HOST, https://$NEW_HOST {{\\n    reverse_proxy $NEW_UPS\\n}}'
+    new_text = text[:m.start()] + new_blk + text[m.end():]
+    with open('$CADDYFILE', 'w') as f:
+        f.write(new_text)
+"
+        docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart caddy 2>/dev/null || true
+        echo "[✓] Updated: http(s)://${NEW_HOST} -> ${NEW_UPS}"
+      fi
+      ;;
+    3|add)
+      local ROUTE_DOM="$2"
+      local ROUTE_UPSTREAM="$3"
+      if [ -z "$ROUTE_DOM" ]; then
+        read -p "Domain URL (e.g. api.group3.vec or monitor.local): " ROUTE_DOM
+      fi
+      if [ -z "$ROUTE_UPSTREAM" ]; then
+        read -p "Upstream Target (e.g. app:5000 or 127.0.0.1:8080): " ROUTE_UPSTREAM
+      fi
+
+      if [ -n "$ROUTE_DOM" ] && [ -n "$ROUTE_UPSTREAM" ]; then
+        cp "$CADDYFILE" "${CADDYFILE}.bak"
+        cat << EOF >> "$CADDYFILE"
+
+http://${ROUTE_DOM}, https://${ROUTE_DOM} {
+    reverse_proxy ${ROUTE_UPSTREAM}
+}
+EOF
+        docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart caddy 2>/dev/null || true
+        echo "[✓] Added route: http(s)://${ROUTE_DOM} -> ${ROUTE_UPSTREAM}"
+      fi
+      ;;
+    4|del|delete)
+      python3 -c "
+import re
+with open('$CADDYFILE', 'r') as f:
+    text = f.read()
+blocks = re.findall(r'(https?://[^\s,{]+(?:,\s*https?://[^\s,{]+)*)\s*\{\s*reverse_proxy\s+([^\s}]+)\s*\}', text)
+for i, (hosts, ups) in enumerate(blocks, 1):
+    h = re.sub(r'^https?://', '', hosts.split(',')[0].strip())
+    print(f'  {i}) {h} -> {ups}')
+"
+      read -p "Select route number to delete: " D_IDX
+      if [ -n "$D_IDX" ]; then
+        cp "$CADDYFILE" "${CADDYFILE}.bak"
+        python3 -c "
+import re
+with open('$CADDYFILE', 'r') as f:
+    text = f.read()
+blocks = list(re.finditer(r'(https?://[^\s,{]+(?:,\s*https?://[^\s,{]+)*)\s*\{\s*reverse_proxy\s+([^\s}]+)\s*\}', text))
+idx = int('$D_IDX') - 1
+if 0 <= idx < len(blocks):
+    m = blocks[idx]
+    new_text = (text[:m.start()] + text[m.end():]).strip() + '\\n'
+    with open('$CADDYFILE', 'w') as f:
+        f.write(new_text)
+"
+        docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart caddy 2>/dev/null || true
+        echo "[✓] Route deleted!"
+      fi
+      ;;
+    5|view)
+      echo "=== ${CADDYFILE} ==="
+      cat "$CADDYFILE"
+      echo "===================="
+      ;;
+    6|reload)
+      docker exec caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart caddy 2>/dev/null || true
+      echo "[✓] Caddy reloaded/restarted!"
+      docker ps --filter "name=caddy" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+      ;;
+    0|back)
+      return 0
+      ;;
+  esac
+}
+
 if [ "${BASH_SOURCE[0]}" != "$0" ]; then
   return 0 2>/dev/null || exit 0
 fi
@@ -1374,6 +1556,7 @@ if [ -z "$USER_CHOICE" ]; then
   echo "9) setup dns server (bind9 port 53)"
   echo "10) dhcp server & snooping"
   echo "11) set static ip (192.168.103.xxx)"
+  echo "12) reverse proxy manager (caddy)"
   read -p "Select [0]: " USER_CHOICE
 fi
 
@@ -1394,4 +1577,5 @@ case $USER_CHOICE in
   9) fn_setup_dns_server "${@:2}" ;;
   10) fn_setup_dhcp_snooping_helper "${@:2}" ;;
   11) fn_set_static_ip "${@:2}" ;;
+  12) fn_manage_reverse_proxy "${@:2}" ;;
 esac
