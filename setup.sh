@@ -669,38 +669,29 @@ EOF
   docker run -d --name dns-server --restart always -p 53:53/udp -p 53:53/tcp -v /opt/dns-server/named-conf:/etc/bind ubuntu/bind9:latest &>/dev/null || true
   
   echo ""
-  echo "==> [✓] DNS Server รันสำเร็จบนพอร์ต 53 เรียบร้อยแล้ว!"
-  echo "ทดสอบจากเครื่องลูกข่าย (Windows/Client) ด้วยคำสั่ง:"
-  echo "  nslookup frontend.group3.vec ${SERVER_IP}"
+  echo "dns server ready on port 53"
+  echo "test: nslookup frontend.group3.vec ${SERVER_IP}"
 }
 
 fn_setup_dhcp_snooping_helper() {
   clear
-  echo "==> ตัวช่วยสร้างคำสั่งตั้งค่า DHCP Snooping บน Switch (Cisco)"
-  echo "--------------------------------------------------------"
-  read -p "สายแลนที่ต่อกับ DHCP Server เสียบอยู่ที่ช่องเบอร์อะไรบน Switch? (เช่น 1 หรือ 24) [1]: " PORT_NUM
+  read -p "DHCP Server port [1]: " PORT_NUM
   [ -z "$PORT_NUM" ] && PORT_NUM="1"
 
-  read -p "หมายเลข VLAN ที่ต้องการเปิด Snooping? [10,20]: " VLANS
+  read -p "VLANs [10,20]: " VLANS
   [ -z "$VLANS" ] && VLANS="10,20"
 
   echo ""
-  echo "========================================================"
-  echo " ก๊อปปี้บล็อกคำสั่งนี้ไปวางในโหมด config ของ Switch ได้เลย:"
-  echo "========================================================"
-  echo "enable"
-  echo "configure terminal"
+  echo "# cisco config:"
   echo "ip dhcp snooping"
   echo "ip dhcp snooping vlan ${VLANS}"
   echo "no ip dhcp snooping information option"
   echo "interface GigabitEthernet 0/${PORT_NUM}"
   echo " ip dhcp snooping trust"
   echo " exit"
-  echo "exit"
-  echo "write memory"
-  echo "========================================================"
-  echo "คำสั่งที่กรรมการใช้ตรวจ:"
-  echo "  show ip dhcp snooping"
+  echo ""
+  echo "# verify:"
+  echo "show ip dhcp snooping"
   echo ""
 }
 
