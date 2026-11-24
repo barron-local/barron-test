@@ -1,21 +1,13 @@
 const { test, expect } = require('@playwright/test');
 
-/**
- * End-to-End (E2E) Test Suite
- * แยกเป็น 4 กรณีทดสอบ (4 Tests) เพื่อให้โชว์ผ่านครบ 4 ข้อ (4 passed) ตามเกณฑ์กรรมการ
- * ใช้ Browser Context เดียวกัน ทำให้ Login แค่ครั้งเดียวในข้อแรก แล้วข้อถัดไปทำต่อได้ทันที!
- */
 test.describe.serial('E2E Test', () => {
-  /** @type {import('@playwright/test').BrowserContext} */
   let context;
-  /** @type {import('@playwright/test').Page} */
   let page;
 
   const testUser = `e2e_user_${Date.now().toString().slice(-4)}`;
   const testPassword = 'Password123!';
 
   test.beforeAll(async ({ browser }) => {
-    // สร้างหน้าต่างเดียว ใช้ร่วมกันทั้ง 4 ข้อ เพื่อไม่ต้องล็อกอินใหม่
     context = await browser.newContext({ ignoreHTTPSErrors: true });
     page = await context.newPage();
   });
@@ -33,11 +25,9 @@ test.describe.serial('E2E Test', () => {
     await expect(page.locator('h2')).toContainText('ระบบบริหารจัดการผู้ใช้');
     await expect(page.locator('.user-info')).toContainText('admin');
     await expect(page.locator('button:has-text("ออกจากระบบ (Logout)")')).toBeVisible();
-
   });
 
   test('E2E-002: ผู้ใช้ส่งข้อมูลสำเร็จ', async () => {
-    // ทำงานต่อใน Dashboard ได้ทันที ไม่ต้อง Login ใหม่
     await page.fill('input[placeholder="ชื่อผู้ใช้ (Username)"]', testUser);
     await page.fill('input[placeholder="รหัสผ่าน (Password)"]', testPassword);
     await page.selectOption('.admin-create-box select', 'readonly');
@@ -46,18 +36,15 @@ test.describe.serial('E2E Test', () => {
     await page.waitForTimeout(1000);
     const tableContent = await page.textContent('table');
     expect(tableContent).toContain(testUser);
-
   });
 
   test('E2E-003: ผู้ใช้ค้นหาข้อมูลสำเร็จ', async () => {
-    // ค้นหาข้อมูลต่อได้ทันที
     await page.fill('input[placeholder="ค้นหาชื่อผู้ใช้ (Search)..."]', testUser);
     await page.click('button:has-text("ค้นหาข้อมูล")');
 
     await page.waitForTimeout(500);
     const tableContent = await page.textContent('table');
     expect(tableContent).toContain(testUser);
-
   });
 
   test('E2E-004: ผู้ใช้ออกจากระบบสำเร็จ', async () => {
@@ -69,7 +56,5 @@ test.describe.serial('E2E Test', () => {
 
     await expect(page.locator('button:has-text("เข้าสู่ระบบ")')).toBeVisible();
     await expect(page.locator('input[placeholder="กรอกชื่อผู้ใช้..."]')).toBeVisible();
-
   });
-
 });
