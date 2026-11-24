@@ -40,8 +40,6 @@ test.describe.serial('E2E Test', () => {
 
   test('E2E-003: ผู้ใช้ค้นหาข้อมูลสำเร็จ', async () => {
     await page.fill('input[placeholder="ค้นหาชื่อผู้ใช้ (Search)..."]', testUser);
-    await page.selectOption('.filter-bar select:has(option[value="readonly"])', 'readonly');
-    await page.selectOption('.filter-bar select:has(option[value="on"])', 'on');
     await page.click('button:has-text("ค้นหาข้อมูล")');
 
     await page.waitForTimeout(500);
@@ -51,7 +49,35 @@ test.describe.serial('E2E Test', () => {
     await page.click('button:has-text("ล้างตัวกรอง")');
   });
 
-  test('E2E-004: ผู้ใช้ออกจากระบบสำเร็จ', async () => {
+  test('E2E-004: กรองข้อมูลตามระดับบทบาทสำเร็จ', async () => {
+    await page.selectOption('.filter-bar select:has(option[value="admin"])', 'admin');
+    await page.click('button:has-text("ค้นหาข้อมูล")');
+    await page.waitForTimeout(500);
+
+    await page.selectOption('.filter-bar select:has(option[value="editonly"])', 'editonly');
+    await page.click('button:has-text("ค้นหาข้อมูล")');
+    await page.waitForTimeout(500);
+
+    await page.selectOption('.filter-bar select:has(option[value="readonly"])', 'readonly');
+    await page.click('button:has-text("ค้นหาข้อมูล")');
+    await page.waitForTimeout(500);
+
+    await page.click('button:has-text("ล้างตัวกรอง")');
+  });
+
+  test('E2E-005: กรองข้อมูลตามสถานะสำเร็จ', async () => {
+    await page.selectOption('.filter-bar select:has(option[value="on"])', 'on');
+    await page.click('button:has-text("ค้นหาข้อมูล")');
+    await page.waitForTimeout(500);
+
+    await page.selectOption('.filter-bar select:has(option[value="off"])', 'off');
+    await page.click('button:has-text("ค้นหาข้อมูล")');
+    await page.waitForTimeout(500);
+
+    await page.click('button:has-text("ล้างตัวกรอง")');
+  });
+
+  test('E2E-006: ผู้ใช้ออกจากระบบสำเร็จ', async () => {
     page.once('dialog', async dialog => {
       await dialog.accept();
     });
