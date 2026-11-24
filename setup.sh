@@ -638,9 +638,12 @@ fn_setup_dns_server() {
   fi
 
   [ -z "$SERVER_IP" ] && SERVER_IP="$DETECTED_IP"
-  [ -z "$DNS_HOSTNAME" ] && DNS_HOSTNAME="dns"
-
   echo "[*] Server IP (Auto-detected): ${SERVER_IP}"
+
+  if [ -z "$DNS_HOSTNAME" ]; then
+    read -p "DNS Hostname [dns]: " DNS_HOSTNAME
+    [ -z "$DNS_HOSTNAME" ] && DNS_HOSTNAME="dns"
+  fi
   echo "[*] DNS Hostname: ${DNS_HOSTNAME}.group3.vec"
 
   local IP_A=$(echo "$SERVER_IP" | cut -d. -f1)
