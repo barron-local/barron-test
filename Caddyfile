@@ -3,40 +3,18 @@
     auto_https disable_redirects
 }
 
-http://backend.group3.vec, https://backend.group3.vec, http://backend.mydomain.lab, https://backend.mydomain.lab {
+http://backend.group3.vec, https://backend.group3.vec {
     reverse_proxy app:5000
 }
 
-http://frontend.group3.vec, https://frontend.group3.vec, http://frontend.mydomain.lab, https://frontend.mydomain.lab {
-    handle /docs* {
-        reverse_proxy app:5000
-    }
-    handle /api/docs* {
-        reverse_proxy app:5000
-    }
+http://frontend.group3.vec, https://frontend.group3.vec {
     reverse_proxy frontend:3000
 }
 
-http://gitlab.group3.vec, https://gitlab.group3.vec, http://gitlab.mydomain.lab, https://gitlab.mydomain.lab {
+http://gitlab.group3.vec, https://gitlab.group3.vec {
     reverse_proxy gitlab:80
 }
 
-http://registry.group3.vec, https://registry.group3.vec, http://registry.mydomain.lab, https://registry.mydomain.lab {
+http://registry.group3.vec, https://registry.group3.vec {
     reverse_proxy gitlab:5050
-}
-
-:80, :443 {
-    handle /docs* {
-        reverse_proxy app:5000
-    }
-    handle /api/docs* {
-        reverse_proxy app:5000
-    }
-    handle /api/* {
-        reverse_proxy app:5000
-    }
-    handle /uploads/* {
-        reverse_proxy app:5000
-    }
-    reverse_proxy frontend:3000
 }
