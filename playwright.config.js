@@ -13,10 +13,7 @@ module.exports = defineConfig({
   },
   fullyParallel: false, // รันเรียงทีละข้อตามลำดับ Workflow E2E
   workers: 1,
-  reporter: [
-    ['list'],
-    ['html', { outputFolder: 'playwright-report', open: 'never' }]
-  ],
+  reporter: 'list',
   use: {
     // กำหนด URL ของหน้าเว็บ (รองรับทั้ง localhost และโดเมน)
     baseURL: process.env.BASE_URL || 'https://frontend.mydomain.lab',
