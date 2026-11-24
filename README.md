@@ -1,6 +1,6 @@
 # ระบบจัดการผู้ใช้และไฟล์แนบ (User Management)
 
-Hell โปรเจกต์ระบบจัดการผู้ใช้และอัปโหลดไฟล์ พัฒนาด้วย Next.js, Node.js Express, MySQL และ Caddy บน Docker Compose สวัสดี
+โปรเจกต์ระบบจัดการผู้ใช้และอัปโหลดไฟล์ พัฒนาด้วย Next.js, Node.js Express, MySQL และ Caddy บน Docker Compose
 
 ---
 
