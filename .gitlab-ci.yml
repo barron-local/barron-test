@@ -12,7 +12,7 @@ build-job:
   stage: build
   image: docker:latest
   script:
-    - docker build -t app:test .
+    - docker build --pull=never -t app:test .
 
 test-job:
   stage: test
@@ -31,7 +31,7 @@ deploy-job:
   image: docker:latest
   script:
     - docker cp ./frontend/. frontend:/app/
-    - docker exec -i frontend npm run build
+    - docker exec -e NEXT_TELEMETRY_DISABLED=1 -i frontend npm run build
     - docker restart frontend
     - docker cp ./index.js app:/app/
     - docker cp ./routes/. app:/app/routes/
