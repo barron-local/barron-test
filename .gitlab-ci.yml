@@ -35,6 +35,7 @@ deploy-job:
     - docker cp ./frontend/. frontend:/app/
     - docker exec -e NEXT_TELEMETRY_DISABLED=1 -i frontend npm run build
     - docker restart frontend
+    - docker cp ./app.js app:/app/
     - docker cp ./index.js app:/app/
     - docker cp ./routes/. app:/app/routes/
     - docker cp ./middlewares/. app:/app/middlewares/
