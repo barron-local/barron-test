@@ -20,7 +20,7 @@ test-job:
   stage: test
   image: docker:latest
   script:
-    - docker run --rm app:test npm test
+    - docker run --rm --volumes-from app app:test npm test
 
 push-job:
   stage: push
