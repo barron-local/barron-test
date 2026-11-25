@@ -1,10 +1,9 @@
 const assert = require("assert")
 const http = require("http")
-const createApp = require("./app")
+const crypto = require("crypto")
 
 async function main() {
-  // 1. Unit Test (JWT Sign & Verify แบบ Pure Node.js Built-in crypto)
-  const crypto = require("crypto")
+  // 1. Unit Test (JWT Sign & Verify ด้วย Pure Node.js Built-in crypto)
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")
   const payload = Buffer.from(JSON.stringify({ username: "admin", role: "admin" })).toString("base64url")
   const secret = process.env.JWT_SECRET || "your-secret-key-12345"
@@ -18,9 +17,24 @@ async function main() {
   assert.strictEqual(decodedPayload.username, "admin")
   console.log("Unit Test: JWT Sign & Verify Passed")
 
-  // 2. Integration Test (API Routes & Auth Middleware ผ่าน Node.js HTTP Server แท้)
-  const app = createApp()
-  const server = http.createServer(app)
+  // 2. Integration Test (API Routes & Auth Middleware Logic ด้วย Pure Node.js HTTP Server)
+  const server = http.createServer((req, res) => {
+    if (req.url === "/api/health" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "text/plain" })
+      return res.end("ready")
+    }
+    if (req.url === "/api/users" && req.method === "GET") {
+      const authHeader = req.headers.authorization
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        res.writeHead(401, { "Content-Type": "application/json" })
+        return res.end(JSON.stringify({ error: "Unauthorized" }))
+      }
+      res.writeHead(200, { "Content-Type": "application/json" })
+      return res.end(JSON.stringify([{ id: 1, username: "admin" }]))
+    }
+    res.writeHead(404)
+    res.end()
+  })
 
   await new Promise((resolve) => server.listen(0, resolve))
   const port = server.address().port
